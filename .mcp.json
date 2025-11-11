@@ -1,0 +1,296 @@
+{
+  "project": {
+    "name": "turbofy",
+    "version": "0.1.0",
+    "description": "A solução descomplicada em pagamentos eletrônicos para o seu negócio oferece soluções de pagamentos eletrônicos para empresas, com foco em segurança e compliance. Ela permite transações rápidas, integração por API para e‑commerces e ERPs, e suporte para múltiplos métodos de pagamento, incluindo PIX. O processo de abertura de conta é simplificado, e a plataforma prioriza a privacidade e a proteção contra fraudes. Integração é a mais simples e fácil do mercado.",
+    "private": true,
+    "main": "index.ts",
+    "engines": {
+      "node": ">=18 <22"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git@github.com:jonadableite/turbofy.git"
+    }
+  },
+
+  "workspaces": {
+    "pnpm": ["backend", "frontend"]
+  },
+
+  "scripts": {
+    "dev": "sst dev",
+    "build": "sst build",
+    "deploy": "sst deploy",
+    "remove": "sst remove",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\""
+  },
+
+  "gateway": {
+    "name": "fitch-gateway",
+    "type": "express",
+    "port": 8080,
+    "healthEndpoint": "/health",
+    "metricsEndpoint": "/metrics",
+    "routes": [
+      {
+        "name": "charge-service",
+        "path": "/charges",
+        "target": "http://backend:8080",
+        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "rewrite": "/$1",
+        "timeoutMs": 10000
+      },
+      {
+        "name": "pix-service",
+        "path": "/pix",
+        "target": "http://backend:8080",
+        "methods": ["GET", "POST"],
+        "rewrite": "/$1",
+        "timeoutMs": 10000
+      },
+      {
+        "name": "boleto-service",
+        "path": "/boletos",
+        "target": "http://backend:8080",
+        "methods": ["GET", "POST"],
+        "rewrite": "/$1",
+        "timeoutMs": 10000
+      },
+      {
+        "name": "settlement-service",
+        "path": "/settlements",
+        "target": "http://backend:8080",
+        "methods": ["GET", "POST"],
+        "rewrite": "/$1",
+        "timeoutMs": 15000
+      },
+      {
+        "name": "reconciliation-service",
+        "path": "/reconciliations",
+        "target": "http://backend:8080",
+        "methods": ["GET", "POST"],
+        "rewrite": "/$1",
+        "timeoutMs": 15000
+      }
+    ],
+    "security": {
+      "cors": {
+        "allowedOrigins": [
+          "https://app.turbofy.com",
+          "https://dashboard.turbofy.com"
+        ]
+      },
+      "rateLimit": {
+        "windowMs": 60000,
+        "max": 120,
+        "standardHeaders": true,
+        "legacyHeaders": false
+      },
+      "headers": {
+        "helmet": true,
+        "contentSecurityPolicy": {
+          "directives": {
+            "defaultSrc": ["'self'"],
+            "scriptSrc": ["'self'", "cdnjs.cloudflare.com"],
+            "styleSrc": ["'self'", "fonts.googleapis.com", "'unsafe-inline'"],
+            "imgSrc": ["'self'", "data:"],
+            "connectSrc": ["'self'"],
+            "fontSrc": ["'self'", "fonts.gstatic.com"]
+          }
+        },
+        "referrerPolicy": { "policy": "no-referrer" }
+      }
+    },
+    "metrics": {
+      "enabled": true,
+      "endpoint": "/metrics",
+      "scrapeIntervalSeconds": 30
+    }
+  },
+
+  "environment": {
+    "required": [
+      "DATABASE_URL",
+      "JWT_SECRET",
+      "CACHE_REDIS_URI",
+      "RABBITMQ_URI",
+      "SMTP_SENDER_EMAIL",
+      "SMTP_HOST",
+      "SMTP_PORT",
+      "SMTP_USERNAME",
+      "SMTP_PASSWORD",
+      "SMTP_AUTH_DISABLED"
+    ],
+    "example": {
+      "DATABASE_URL": "postgres://postgres:*****@painel.whatlead.com.br:5432/turbofy?sslmode=disable",
+      "JWT_SECRET": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6",
+      "CACHE_REDIS_URI": "redis://default:*****@painel.whatlead.com.br:6379",
+      "RABBITMQ_URI": "amqp://guest:guest@31.97.254.58",
+      "SMTP_SENDER_EMAIL": "WhatLead <contato@whatlead.com.br>",
+      "SMTP_HOST": "smtp.zoho.com",
+      "SMTP_PORT": "587",
+      "SMTP_USERNAME": "contato@whatlead.com.br",
+      "SMTP_PASSWORD": "*****",
+      "SMTP_AUTH_DISABLED": "false",
+      "OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector:4318/v1/traces",
+      "SENTRY_DSN": "https://<public_key>@sentry.io/<project_id>",
+      "DATADOG_API_KEY": "*****"
+    }
+  },
+
+  "docker": {
+    "composeVersion": "3.9",
+    "services": {
+      "backend": {
+        "build": {
+          "context": "./backend",
+          "dockerfile": "Dockerfile"
+        },
+        "ports": ["8080:8080"],
+        "environment": [
+          "DATABASE_URL",
+          "JWT_SECRET",
+          "CACHE_REDIS_URI",
+          "RABBITMQ_URI",
+          "SMTP_SENDER_EMAIL",
+          "SMTP_HOST",
+          "SMTP_PORT",
+          "SMTP_USERNAME",
+          "SMTP_PASSWORD",
+          "SMTP_AUTH_DISABLED",
+          "OTEL_EXPORTER_OTLP_ENDPOINT",
+          "SENTRY_DSN",
+          "DATADOG_API_KEY"
+        ],
+        "healthcheck": {
+          "test": ["CMD", "curl", "-f", "http://localhost:8080/health"],
+          "interval": "30s",
+          "timeout": "5s",
+          "retries": 3,
+          "start_period": "10s"
+        },
+        "deploy": {
+          "resources": {
+            "limits": {
+              "cpus": "0.5",
+              "memory": "256M"
+            },
+            "reservations": {
+              "cpus": "0.2",
+              "memory": "128M"
+            }
+          },
+          "restart_policy": {
+            "condition": "on-failure",
+            "max_attempts": 5
+          }
+        }
+      },
+      "frontend": {
+        "build": {
+          "context": "./frontend",
+          "dockerfile": "Dockerfile"
+        },
+        "ports": ["3000:3000"],
+        "environment": [],
+        "healthcheck": {
+          "test": ["CMD", "curl", "-f", "http://localhost:3000/healthz"],
+          "interval": "30s",
+          "timeout": "5s",
+          "retries": 3
+        },
+        "deploy": {
+          "resources": {
+            "limits": {
+              "cpus": "0.4",
+              "memory": "128M"
+            },
+            "reservations": {
+              "cpus": "0.1",
+              "memory": "64M"
+            }
+          },
+          "restart_policy": {
+            "condition": "on-failure",
+            "max_attempts": 3
+          }
+        }
+      }
+    }
+  },
+
+  "monitoring": {
+    "logs": {
+      "provider": "pino",
+      "exporters": ["loki", "datadog"],
+      "logLevel": "info",
+      "prettyPrint": false
+    },
+    "traces": {
+      "provider": "opentelemetry",
+      "exporter": "otlp-http",
+      "endpoint": "http://otel-collector:4318/v1/traces"
+    },
+    "metrics": {
+      "provider": "prometheus",
+      "scrapeEndpoint": "/metrics",
+      "port": 9090
+    },
+    "alerting": {
+      "tool": "grafana",
+      "receivers": ["slack", "pagerduty"]
+    }
+  },
+
+  "ci": {
+    "provider": "github",
+    "workflowFile": ".github/workflows/ci.yml",
+    "steps": [
+      "checkout",
+      "setup-node-20",
+      "install-dependencies (pnpm install)",
+      "run-linter (npm run lint)",
+      "run-typecheck (tsc --noEmit)",
+      "run-tests (npm test)",
+      "build-docker-images",
+      "push-images-to-ecr",
+      "run-sst-deploy (sst deploy --stage ${{ github.ref_name }})"
+    ]
+  },
+
+  "linting": {
+    "eslintConfig": "eslint-config-airbnb-base",
+    "plugins": ["@typescript-eslint", "eslint-plugin-import"],
+    "prettierConfig": "prettier-config",
+    "scripts": {
+      "lint": "eslint . --ext .ts,.js",
+      "format": "prettier --write \"**/*.{ts,js,json,md}\""
+    }
+  },
+
+  "conventionalCommits": {
+    "enabled": true,
+    "typeMap": {
+      "feat": "Features",
+      "fix": "Bug Fixes",
+      "docs": "Documentation",
+      "style": "Styling",
+      "refactor": "Refactoring",
+      "perf": "Performance",
+      "test": "Tests",
+      "chore": "Chores",
+      "build": "Build System",
+      "ci": "CI/CD"
+    }
+  },
+
+  "infra": {
+    "sst": {
+      "stacks": ["core", "data", "mq", "api", "frontend"],
+      "region": "us-east-1",
+      "profile": "default"
+    }
+  }
+}
