@@ -19,6 +19,8 @@ model Merchant {
   pixKeys           PixKey[]
   charges           Charge[]
   chargeSplits      ChargeSplit[]
+  settlements       Settlement[]
+  reconciliations   Reconciliation[]
   balance           Decimal    @default(0)
   fee               Decimal    @default(0)
   bankAccount       BankAccount?
@@ -188,4 +190,79 @@ model Fee {
   createdAt    DateTime @default(now())
 
   @@index([chargeId])
+}
+
+/// ---------------------------------------
+/// Settlement models (repasses)
+/// ---------------------------------------
+
+enum SettlementStatus {
+  PENDING
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+model Settlement {
+  id             String           @id @default(uuid())
+  merchantId     String
+  merchant       Merchant         @relation(fields: [merchantId], references: [id])
+  amountCents    Int
+  currency       String           @default("BRL")
+  status         SettlementStatus @default(PENDING)
+  scheduledFor   DateTime?
+  processedAt    DateTime?
+  bankAccountId  String?
+  transactionId  String?
+  failureReason  String?
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+/// ---------------------------------------
+/// Reconciliation models (conciliação)
+/// ---------------------------------------
+
+enum ReconciliationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum ReconciliationType {
+  AUTOMATIC
+  MANUAL
+}
+
+model Reconciliation {
+  id                    String                @id @default(uuid())
+  merchantId            String
+  merchant              Merchant              @relation(fields: [merchantId], references: [id])
+  type                  ReconciliationType
+  status                ReconciliationStatus  @default(PENDING)
+  startDate             DateTime
+  endDate               DateTime
+  matches               Json?                 // Array de ReconciliationMatch
+  unmatchedCharges      String[]              @default([]) // Array de charge IDs
+  unmatchedTransactions String[]              @default([]) // Array de transaction IDs
+  totalAmountCents      Int                   @default(0)
+  matchedAmountCents    Int                   @default(0)
+  failureReason         String?
+  processedAt           DateTime?
+  metadata              Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([startDate, endDate])
 }

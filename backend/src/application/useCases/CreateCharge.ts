@@ -9,6 +9,8 @@ import {
   ChargeMethod,
   ChargeStatus,
 } from "../../domain/entities/Charge";
+import { ChargeSplit } from "../../domain/entities/ChargeSplit";
+import { Fee } from "../../domain/entities/Fee";
 import { ChargeRepository } from "../../ports/ChargeRepository";
 import { PaymentProviderPort } from "../../ports/PaymentProviderPort";
 import { MessagingPort } from "../../ports/MessagingPort";
@@ -25,10 +27,21 @@ interface CreateChargeInput {
   expiresAt?: Date;
   externalRef?: string;
   metadata?: Record<string, unknown>;
+  splits?: Array<{
+    merchantId: string;
+    amountCents?: number;
+    percentage?: number;
+  }>;
+  fees?: Array<{
+    type: string;
+    amountCents: number;
+  }>;
 }
 
 interface CreateChargeOutput {
   charge: Charge;
+  splits?: ChargeSplit[];
+  fees?: Fee[];
 }
 
 export class CreateCharge {
@@ -70,10 +83,74 @@ export class CreateCharge {
       metadata: input.metadata,
     });
 
-    // 3. Persist initial charge
+    // 3. Validate splits if provided
+    const splits: ChargeSplit[] = [];
+    if (input.splits && input.splits.length > 0) {
+      let totalSplitAmount = 0;
+      
+      for (const splitInput of input.splits) {
+        const split = new ChargeSplit({
+          chargeId: charge.id,
+          merchantId: splitInput.merchantId,
+          amountCents: splitInput.amountCents,
+          percentage: splitInput.percentage,
+        });
+        
+        const splitAmount = split.computeAmountForTotal(charge.amountCents);
+        totalSplitAmount += splitAmount;
+        
+        if (totalSplitAmount > charge.amountCents) {
+          throw new Error(
+            `Total split amount (${totalSplitAmount}) exceeds charge amount (${charge.amountCents})`
+          );
+        }
+        
+        splits.push(split);
+      }
+    }
+
+    // 4. Validate fees if provided
+    const fees: Fee[] = [];
+    if (input.fees && input.fees.length > 0) {
+      let totalFees = 0;
+      
+      for (const feeInput of input.fees) {
+        const fee = new Fee({
+          chargeId: charge.id,
+          type: feeInput.type,
+          amountCents: feeInput.amountCents,
+        });
+        
+        totalFees += fee.amountCents;
+        fees.push(fee);
+      }
+      
+      // Validate that fees don't exceed charge amount
+      if (totalFees > charge.amountCents) {
+        throw new Error(
+          `Total fees (${totalFees}) exceed charge amount (${charge.amountCents})`
+        );
+      }
+    }
+
+    // 5. Persist initial charge
     let persisted = await this.chargeRepository.create(charge);
 
-    // 4. Emit payment via provider depending on method
+    // 6. Persist splits if any
+    const persistedSplits: ChargeSplit[] = [];
+    for (const split of splits) {
+      const persistedSplit = await this.chargeRepository.addSplit(charge.id, split);
+      persistedSplits.push(persistedSplit);
+    }
+
+    // 7. Persist fees if any
+    const persistedFees: Fee[] = [];
+    for (const fee of fees) {
+      const persistedFee = await this.chargeRepository.addFee(charge.id, fee);
+      persistedFees.push(persistedFee);
+    }
+
+    // 8. Emit payment via provider depending on method
     if (persisted.method === ChargeMethod.PIX) {
       const pixData = await this.paymentProvider.issuePixCharge({
         amountCents: persisted.amountCents,
@@ -92,7 +169,7 @@ export class CreateCharge {
       persisted = persisted.withBoletoData(boletoData.boletoUrl);
     }
 
-    // 5. Update persisted charge with payment data (if any)
+    // 9. Update persisted charge with payment data (if any)
     if (persisted.pixQrCode || persisted.boletoUrl) {
       persisted = await this.chargeRepository.update(persisted);
     }
