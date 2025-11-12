@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +11,7 @@ import { Loader2 } from "lucide-react";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FormInput } from "@/components/auth/FormInput";
+import { AceternityButton } from "@/components/auth/AceternityButton";
 import { loginSchema, type LoginInput } from "@/lib/validation";
 import { api, ApiException } from "@/lib/api";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
@@ -42,7 +44,7 @@ export default function LoginPage() {
   });
 
   // Lockout timer countdown
-  useState(() => {
+  React.useEffect(() => {
     if (isLocked && lockoutTimer > 0) {
       const interval = setInterval(() => {
         setLockoutTimer((prev) => {
@@ -58,7 +60,7 @@ export default function LoginPage() {
 
       return () => clearInterval(interval);
     }
-  });
+  }, [isLocked, lockoutTimer]);
 
   const onSubmit = async (data: LoginInput) => {
     if (isLocked) return;
@@ -116,11 +118,11 @@ export default function LoginPage() {
         {/* Error message */}
         {error && (
           <motion.div
-            className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm"
+            className="p-3 rounded-md bg-destructive/10 border border-destructive/20"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {error}
+            <p className="text-sm text-destructive">{error}</p>
           </motion.div>
         )}
 
@@ -146,28 +148,34 @@ export default function LoginPage() {
           disabled={isLocked}
         />
 
-        {/* Forgot password link */}
-        <div className="flex justify-end">
+        {/* Remember me and Forgot password */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <input
+              id="remember"
+              type="checkbox"
+              className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-ring focus:ring-offset-0"
+            />
+            <label
+              htmlFor="remember"
+              className="text-sm text-foreground cursor-pointer"
+            >
+              Lembrar de mim
+            </label>
+          </div>
           <Link
             href="/forgot"
-            className="text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
           >
-            Esqueceu sua senha?
+            Esqueceu a senha?
           </Link>
         </div>
 
-        {/* Submit button */}
-        <motion.button
+        {/* Submit button - Estilo Aceternity */}
+        <AceternityButton
           type="submit"
           disabled={!isValid || isSubmitting || isLocked || !isReady}
-          className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium
-                     transition-all duration-200 
-                     hover:bg-primary/90 
-                     focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     flex items-center justify-center gap-2"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>
@@ -177,18 +185,18 @@ export default function LoginPage() {
           ) : isLocked ? (
             `Aguarde ${lockoutTimer}s`
           ) : (
-            "Entrar"
+            "Entrar →"
           )}
-        </motion.button>
+        </AceternityButton>
 
         {/* Register link */}
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Não tem uma conta?{" "}
           <Link
             href="/register"
-            className="text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+            className="text-primary hover:text-primary/80 font-medium transition-colors"
           >
-            Cadastre-se
+            Criar conta
           </Link>
         </p>
       </form>

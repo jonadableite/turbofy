@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FormInput } from "@/components/auth/FormInput";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
+import { AceternityButton } from "@/components/auth/AceternityButton";
 import { registerSchema, type RegisterInput } from "@/lib/validation";
 import { api, ApiException } from "@/lib/api";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
@@ -48,7 +49,7 @@ export default function RegisterPage() {
       const recaptchaToken = await executeRecaptcha("register");
 
       // Chamada à API (backend espera: email, password, document, phone?)
-      const response = await api<RegisterResponse>("/auth/register", {
+      await api<RegisterResponse>("/auth/register", {
         method: "POST",
         body: JSON.stringify({
           email: data.email,
@@ -82,15 +83,15 @@ export default function RegisterPage() {
       title="Criar conta"
       subtitle="Comece a usar o Turbofy hoje mesmo"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Error message */}
         {error && (
           <motion.div
-            className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm"
+            className="p-3 rounded-md bg-destructive/10 border border-destructive/20"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {error}
+            <p className="text-sm text-destructive">{error}</p>
           </motion.div>
         )}
 
@@ -152,18 +153,11 @@ export default function RegisterPage() {
           error={errors.confirmPassword?.message}
         />
 
-        {/* Submit button */}
-        <motion.button
+        {/* Submit button - Estilo Aceternity */}
+        <AceternityButton
           type="submit"
           disabled={!isValid || isSubmitting || !isReady}
-          className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium
-                     transition-all duration-200 
-                     hover:bg-primary/90 
-                     focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     flex items-center justify-center gap-2"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>
@@ -171,30 +165,18 @@ export default function RegisterPage() {
               Criando conta...
             </>
           ) : (
-            "Criar conta"
+            "Criar conta →"
           )}
-        </motion.button>
+        </AceternityButton>
 
         {/* Login link */}
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Já tem uma conta?{" "}
           <Link
             href="/login"
-            className="text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+            className="text-primary hover:text-primary/80 font-medium transition-colors"
           >
             Fazer login
-          </Link>
-        </p>
-
-        {/* Terms */}
-        <p className="text-center text-xs text-muted-foreground">
-          Ao criar uma conta, você concorda com nossos{" "}
-          <Link href="/terms" className="text-primary hover:underline">
-            Termos de Serviço
-          </Link>{" "}
-          e{" "}
-          <Link href="/privacy" className="text-primary hover:underline">
-            Política de Privacidade
           </Link>
         </p>
       </form>

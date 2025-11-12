@@ -5,13 +5,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm dlx sst dev",
+    "dev": "docker compose up -d --build",
     "build": "pnpm run backend:build",
     "backend:build": "pnpm -C backend build",
     "frontend:build": "pnpm -C frontend build",
-    "infra:build": "pnpm dlx sst build",
-    "deploy": "pnpm dlx sst deploy",
-    "remove": "pnpm dlx sst remove"
+    "infra:build": "pnpm exec sst build",
+    "deploy": "pnpm exec sst deploy",
+    "remove": "pnpm exec sst remove"
   },
   "keywords": [],
   "author": "",

@@ -19,4 +19,4 @@ COPY --from=builder /app/prisma ./prisma
 COPY docker/healthcheck.js ./healthcheck.js
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["node", "/app/healthcheck.js"]
-CMD ["node", "/app/dist/index.js"]
+CMD ["node", "-e", "require('child_process').execSync('node node_modules/.bin/prisma migrate deploy',{stdio:'inherit'}); require('/app/dist/index.js')"]

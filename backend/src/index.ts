@@ -41,11 +41,31 @@ app.use(
 );
 app.use(express.json());
 
+// Middleware para ignorar requisições conhecidas que retornam 404
+app.use((req, res, next) => {
+  // Ignorar requisições do Socket.IO (não implementado no backend)
+  if (req.url?.includes('/ws/socket.io/')) {
+    return res.status(404).end();
+  }
+  // Ignorar requisições do Next.js que chegam ao backend por engano
+  if (req.url?.includes('/_app/') || req.url?.includes('/_next/')) {
+    return res.status(404).end();
+  }
+  next();
+});
+
 // Custom HTTP logger com formatação melhorada
 app.use(
   pinoHttp({
     logger,
     customLogLevel: (req, res, err) => {
+      // Ignorar logs de 404 para requisições conhecidas
+      if (res.statusCode === 404) {
+        const url = req.url || '';
+        if (url.includes('/ws/socket.io/') || url.includes('/_app/') || url.includes('/_next/')) {
+          return 'silent'; // Não logar essas requisições
+        }
+      }
       if (res.statusCode >= 500 || err) return 'error';
       if (res.statusCode >= 400) return 'warn';
       if (res.statusCode >= 300) return 'info';
@@ -73,16 +93,16 @@ app.use(
       const status = res.statusCode;
       const time = res.responseTime ? `${res.responseTime}ms` : '';
       
-      // Emojis e cores baseados no status
-      let emoji = '✅';
-      if (status >= 500) emoji = '❌';
-      else if (status >= 400) emoji = '⚠️';
-      else if (status >= 300) emoji = '↩️';
+      // Usar símbolos ASCII ao invés de emojis para evitar problemas de encoding
+      let symbol = '[OK]';
+      if (status >= 500) symbol = '[ERROR]';
+      else if (status >= 400) symbol = '[WARN]';
+      else if (status >= 300) symbol = '[REDIRECT]';
       
-      return `${emoji} ${method} ${url} → ${status} ${time}`;
+      return `${symbol} ${method} ${url} -> ${status} ${time}`;
     },
     customErrorMessage: (req, res, err) => {
-      return `❌ ${req.method} ${req.url} → ${res.statusCode} ERROR: ${err.message}`;
+      return `[ERROR] ${req.method} ${req.url} -> ${res.statusCode} ERROR: ${err.message}`;
     },
   })
 );
@@ -123,27 +143,27 @@ const PORT = Number(env.PORT);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
-    // Banner de inicialização melhorado
-    console.log('\n' + chalk.cyan('━'.repeat(60)));
-    console.log(chalk.bold.blue('  🚀 TURBOFY GATEWAY - API BACKEND'));
-    console.log(chalk.cyan('━'.repeat(60)));
-    console.log(chalk.green(`  ✓ Servidor:       http://localhost:${PORT}`));
-    console.log(chalk.green(`  ✓ Documentação:   http://localhost:${PORT}/docs`));
-    console.log(chalk.green(`  ✓ Health Check:   http://localhost:${PORT}/healthz`));
-    console.log(chalk.cyan('━'.repeat(60)));
-    console.log(chalk.yellow(`  📊 Ambiente:      ${env.NODE_ENV}`));
-    console.log(chalk.yellow(`  🔒 CORS Origin:   ${process.env.CORS_ORIGIN || '*'}`));
-    console.log(chalk.cyan('━'.repeat(60)));
-    console.log(chalk.magenta('  🎯 Endpoints Disponíveis:'));
+    // Banner de inicialização melhorado (usando símbolos ASCII para compatibilidade)
+    console.log('\n' + chalk.cyan('═'.repeat(60)));
+    console.log(chalk.bold.blue('  [TURBOFY GATEWAY - API BACKEND]'));
+    console.log(chalk.cyan('═'.repeat(60)));
+    console.log(chalk.green(`  [OK] Servidor:       http://localhost:${PORT}`));
+    console.log(chalk.green(`  [OK] Documentação:   http://localhost:${PORT}/docs`));
+    console.log(chalk.green(`  [OK] Health Check:   http://localhost:${PORT}/healthz`));
+    console.log(chalk.cyan('═'.repeat(60)));
+    console.log(chalk.yellow(`  [INFO] Ambiente:      ${env.NODE_ENV}`));
+    console.log(chalk.yellow(`  [INFO] CORS Origin:   ${process.env.CORS_ORIGIN || '*'}`));
+    console.log(chalk.cyan('═'.repeat(60)));
+    console.log(chalk.magenta('  [ENDPOINTS] Disponíveis:'));
     console.log(chalk.white('     • POST /auth/register       - Criar conta'));
     console.log(chalk.white('     • POST /auth/login          - Fazer login'));
     console.log(chalk.white('     • POST /auth/forgot-password - Recuperar senha'));
     console.log(chalk.white('     • GET  /api/auth/csrf       - Token CSRF'));
     console.log(chalk.white('     • POST /charges             - Criar cobrança'));
-    console.log(chalk.cyan('━'.repeat(60)));
-    console.log(chalk.green.bold('  ✨ Servidor pronto para receber requisições!\n'));
+    console.log(chalk.cyan('═'.repeat(60)));
+    console.log(chalk.green.bold('  [READY] Servidor pronto para receber requisições!\n'));
     
-    logger.info('🚀 Turbofy API iniciada com sucesso');
+    logger.info('[STARTED] Turbofy API iniciada com sucesso');
   });
 }
 

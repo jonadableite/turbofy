@@ -2,7 +2,9 @@
 
 import { forwardRef, useState, InputHTMLAttributes } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { motion } from "framer-motion";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { LabelInputContainer } from "./LabelInputContainer";
 import { cn } from "@/lib/utils";
 
 export interface FormInputProps
@@ -15,7 +17,6 @@ export interface FormInputProps
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
   ({ label, error, helperText, type, className, id, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
-    const [isFocused, setIsFocused] = useState(false);
 
     const isPassword = type === "password";
     const inputType = isPassword && showPassword ? "text" : type;
@@ -23,77 +24,54 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
     const errorId = `${inputId}-error`;
 
     return (
-      <div className="space-y-2">
-        <label
-          htmlFor={inputId}
-          className="block text-sm font-medium text-foreground"
-        >
-          {label}
-        </label>
-
+      <LabelInputContainer className={cn(error && "mb-4", className)}>
+        <Label htmlFor={inputId}>{label}</Label>
         <div className="relative">
-          <motion.input
+          <Input
             ref={ref}
             type={inputType}
             id={inputId}
             className={cn(
-              "w-full px-4 py-3 rounded-lg border bg-background/50 backdrop-blur-sm",
-              "transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary",
-              "placeholder:text-muted-foreground",
-              error
-                ? "border-destructive focus:ring-destructive/50 focus:border-destructive"
-                : "border-border",
+              "h-12 bg-input/50 backdrop-blur-sm",
+              error && "focus-visible:ring-destructive",
+              isPassword && "pr-10",
               className
             )}
             aria-invalid={!!error}
             aria-describedby={error ? errorId : undefined}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            animate={{
-              scale: isFocused ? 1.01 : 1,
-            }}
-            transition={{ duration: 0.2 }}
             {...props}
           />
-
           {isPassword && (
-            <motion.button
+            <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.2, delay: 0.1 }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
               {showPassword ? (
                 <EyeOff className="w-5 h-5" />
               ) : (
                 <Eye className="w-5 h-5" />
               )}
-            </motion.button>
+            </button>
           )}
         </div>
-
         {error && (
-          <motion.p
+          <p
             id={errorId}
             className="text-sm text-destructive"
             role="alert"
             aria-live="polite"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
           >
             {error}
-          </motion.p>
+          </p>
         )}
-
         {helperText && !error && (
-          <p className="text-sm text-muted-foreground">{helperText}</p>
+          <p className="text-sm text-muted-foreground">
+            {helperText}
+          </p>
         )}
-      </div>
+      </LabelInputContainer>
     );
   }
 );

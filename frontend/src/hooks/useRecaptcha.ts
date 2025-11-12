@@ -15,7 +15,12 @@ export function useRecaptcha(): UseRecaptchaReturn {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    // Em desenvolvimento, não bloquear submissão por ausência de reCAPTCHA
     if (executeRecaptchaLib) {
+      setIsReady(true);
+      return;
+    }
+    if (process.env.NODE_ENV !== "production") {
       setIsReady(true);
     }
   }, [executeRecaptchaLib]);

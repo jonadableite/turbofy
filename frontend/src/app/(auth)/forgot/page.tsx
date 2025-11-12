@@ -9,6 +9,7 @@ import { Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FormInput } from "@/components/auth/FormInput";
+import { AceternityButton } from "@/components/auth/AceternityButton";
 import { forgotPasswordSchema, type ForgotPasswordInput } from "@/lib/validation";
 import { api, ApiException } from "@/lib/api";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
@@ -120,21 +121,21 @@ export default function ForgotPasswordPage() {
         {/* Error message */}
         {error && (
           <motion.div
-            className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm"
+            className="p-3 rounded-md bg-destructive/10 border border-destructive/20"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {error}
+            <p className="text-sm text-destructive">{error}</p>
           </motion.div>
         )}
 
         {/* Info message */}
         <motion.div
-          className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-sm"
+          className="p-3 rounded-md bg-primary/10 border border-primary/20"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <p className="text-foreground">
+          <p className="text-sm text-foreground">
             Informe o email cadastrado e enviaremos um link para redefinir sua
             senha.
           </p>
@@ -150,18 +151,11 @@ export default function ForgotPasswordPage() {
           error={errors.email?.message}
         />
 
-        {/* Submit button */}
-        <motion.button
+        {/* Submit button - Estilo Aceternity */}
+        <AceternityButton
           type="submit"
           disabled={!isValid || isSubmitting || !isReady}
-          className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium
-                     transition-all duration-200 
-                     hover:bg-primary/90 
-                     focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     flex items-center justify-center gap-2"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>
@@ -169,20 +163,20 @@ export default function ForgotPasswordPage() {
               Enviando...
             </>
           ) : (
-            "Enviar link de recuperação"
+            "Enviar link de recuperação →"
           )}
-        </motion.button>
+        </AceternityButton>
 
         {/* Back to login */}
-        <div className="text-center">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
+            className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para login
           </Link>
-        </div>
+        </p>
       </form>
     </AuthLayout>
   );
