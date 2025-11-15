@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { prisma } from "../../database/prismaClient";
 import { logger } from "../../logger";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 export const dashboardRouter = Router();
 
@@ -318,4 +319,41 @@ dashboardRouter.get("/top-products", dashboardLimiter, async (req: Request, res:
     });
   }
 });
+// POST /dashboard/merchant/ensure - cria/associa Merchant ao usuário autenticado se não existir
+dashboardRouter.post("/merchant/ensure", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Usuário não autenticado" } });
+    }
 
+    const user = await prisma.user.findUnique({ where: { id: req.user.id }, select: { id: true, email: true, merchantId: true } });
+    if (!user) {
+      return res.status(404).json({ error: { code: "USER_NOT_FOUND", message: "Usuário não encontrado" } });
+    }
+
+    if (user.merchantId) {
+      return res.status(200).json({ merchantId: user.merchantId });
+    }
+
+    const name = (user.email || "Merchant").split("@")[0];
+    const document = `AUTO-${user.id}`; // placeholder único para desenvolvimento
+
+    const merchant = await prisma.merchant.create({
+      data: {
+        name,
+        email: user.email,
+        document,
+        active: true,
+      },
+      select: { id: true },
+    });
+
+    await prisma.user.update({ where: { id: user.id }, data: { merchantId: merchant.id } });
+
+    logger.info({ userId: user.id, merchantId: merchant.id }, "Merchant criado e associado ao usuário");
+    return res.status(201).json({ merchantId: merchant.id });
+  } catch (err) {
+    logger.error({ err }, "Erro ao garantir Merchant para usuário");
+    return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Erro interno" } });
+  }
+});

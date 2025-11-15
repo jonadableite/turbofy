@@ -15,7 +15,8 @@
     "prisma:studio": "prisma studio",
     "predev": "pnpm prisma:generate:force",
     "prebuild": "pnpm prisma:generate:force",
-    "check": "ts-node scripts/check-setup.ts"
+    "check": "ts-node scripts/check-setup.ts",
+    "seed:dev": "node scripts/seed-dev.js"
   },
   "keywords": [],
   "author": "",

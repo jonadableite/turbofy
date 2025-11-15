@@ -28,6 +28,7 @@ import { settlementsRouter } from "./infrastructure/http/routes/settlementsRoute
 import { reconciliationsRouter } from "./infrastructure/http/routes/reconciliationsRoutes";
 import { dashboardRouter } from "./infrastructure/http/routes/dashboardRoutes";
 import { transfeeraWebhookRouter } from "./infrastructure/http/routes/transfeeraWebhookRoutes";
+import { checkoutRouter } from "./infrastructure/http/routes/checkoutRoutes";
 import { register } from "prom-client";
 
 const app = express();
@@ -36,8 +37,14 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    // Nunca usar '*' quando credentials: true. Em dev, permitir o frontend em 3001.
-    origin: process.env.CORS_ORIGIN ?? "http://localhost:3001",
+    origin: (origin, callback) => {
+      const defaults = process.env.CORS_ORIGIN ?? "http://localhost:3001";
+      const allowed = new Set([defaults, "http://localhost:3030"]);
+      if (!origin || allowed.has(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: [
       "Content-Type",
@@ -46,7 +53,7 @@ app.use(
       "X-Idempotency-Key",
       "X-CSRF-Token",
     ],
-    credentials: true, // Permitir cookies (necessário para HttpOnly cookies)
+    credentials: true,
   })
 );
 app.use(express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }));
@@ -152,6 +159,7 @@ app.get("/healthz", async (_, res) => {
 app.use('/api', apiRouter);
 app.use('/auth', authRouter);
 app.use('/charges', chargesRouter);
+app.use('/checkout', checkoutRouter);
 app.use('/settlements', settlementsRouter);
 app.use('/reconciliations', reconciliationsRouter);
 app.use('/dashboard', dashboardRouter);
@@ -195,6 +203,8 @@ if (process.env.NODE_ENV !== "test") {
       console.log(chalk.white('     • POST /auth/forgot-password - Recuperar senha'));
       console.log(chalk.white('     • GET  /api/auth/csrf       - Token CSRF'));
       console.log(chalk.white('     • POST /charges             - Criar cobrança'));
+      console.log(chalk.white('     • POST /checkout/sessions   - Criar sessão de checkout'));
+      console.log(chalk.white('     • GET  /checkout/sessions/:id - Detalhes da sessão'));
       console.log(chalk.cyan('═'.repeat(60)));
       console.log(chalk.green.bold('  [READY] Servidor pronto para receber requisições!\n'));
       

@@ -18,6 +18,7 @@ interface AuthenticatedUser {
   email: string;
   roles: string[];
   name?: string;
+  merchantId?: string | null;
 }
 
 interface AuthContextType {
@@ -300,4 +301,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-

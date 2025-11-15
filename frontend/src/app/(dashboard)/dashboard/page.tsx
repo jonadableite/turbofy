@@ -1,25 +1,13 @@
 "use client";
-
-import { useState } from "react";
-import { Sidebar, SidebarBody, SidebarLink, SidebarSection } from "@/components/ui/sidebar";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { HealthStatusCard } from "@/components/dashboard/health-status-card";
 import { TopProducts } from "@/components/dashboard/top-products";
 import { Achievements } from "@/components/dashboard/achievements";
-import { Logo, LogoIcon } from "@/components/sidebar-demo";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useAuth } from "@/contexts/auth-context";
-import {
-  IconBrandTabler,
-  IconShoppingCart,
-  IconChartLine,
-  IconUsers,
-  IconAffiliate,
-  IconSettings,
-  IconPlug,
-} from "@tabler/icons-react";
+import { IconShoppingCart, IconChartLine } from "@tabler/icons-react";
 import {
   ShoppingCart,
   TrendingUp,
@@ -63,8 +51,6 @@ const mockAchievements = [
 ];
 
 export default function DashboardPage() {
-  // Sidebar começa aberta e fixada por padrão
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, loading: authLoading, error: authError, isAuthenticated } = useAuth();
 
   const getDisplayName = (email?: string, name?: string) => {
@@ -133,138 +119,8 @@ export default function DashboardPage() {
     ]
     : [];
 
-  const sidebarLinks = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      icon: <IconBrandTabler className="h-5 w-5 shrink-0 text-primary" />,
-    },
-    {
-      label: "Vitrine",
-      href: "/vitrine",
-      icon: <IconShoppingCart className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Vendas",
-      href: "/vendas",
-      icon: <IconChartLine className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Financeiro",
-      href: "/financeiro",
-      icon: <DollarSign className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Clientes",
-      href: "/clientes",
-      icon: <IconUsers className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Afiliados",
-      href: "/afiliados",
-      icon: <IconAffiliate className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Produtos",
-      href: "/produtos",
-      icon: <Package className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Configurações",
-      href: "/configuracoes",
-      icon: <IconSettings className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-    {
-      label: "Integrações",
-      href: "/integracoes",
-      icon: <IconPlug className="h-5 w-5 shrink-0 text-foreground" />,
-    },
-  ];
-
-  const salesLabels = ["Vitrine", "Vendas", "Clientes", "Afiliados", "Produtos"] as const;
-  const financeLabels = ["Financeiro", "Integrações", "Configurações"] as const;
-
-  const dashboardLink = sidebarLinks.find((l) => l.label === "Dashboard");
-  const salesLinks = sidebarLinks.filter((l) => salesLabels.includes(l.label as typeof salesLabels[number]));
-  const financeLinks = sidebarLinks.filter((l) => financeLabels.includes(l.label as typeof financeLabels[number]));
-
-
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - Fixada e aberta por padrão */}
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} variant="flat">
-        <SidebarBody className="justify-between gap-8">
-          <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-            <div className="mb-6 pr-10">
-              {sidebarOpen ? <Logo /> : <LogoIcon />}
-            </div>
-            <div className="flex flex-col gap-4">
-              {dashboardLink && (
-                <SidebarLink
-                  link={dashboardLink}
-                  className={cn("bg-primary/20 text-primary font-semibold border-l-2 border-primary")}
-                />
-              )}
-              <SidebarSection title="Área de Vendas">
-                {salesLinks.map((link, idx) => (
-                  <SidebarLink key={`sales-${idx}`} link={link} />
-                ))}
-              </SidebarSection>
-              <SidebarSection title="Financeiro">
-                {financeLinks.map((link, idx) => (
-                  <SidebarLink key={`fin-${idx}`} link={link} />
-                ))}
-              </SidebarSection>
-            </div>
-          </div>
-
-          {/* User Profile Section */}
-          <div className="mt-auto pt-4 border-t border-border">
-            {authLoading ? (
-              <SidebarLink
-                link={{
-                  label: "Carregando…",
-                  href: "#",
-                  icon: (
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-muted flex items-center justify-center border-2 border-border">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
-                  ),
-                }}
-              />
-            ) : authError ? (
-              <SidebarLink
-                link={{
-                  label: "Erro ao carregar",
-                  href: "#",
-                  icon: (
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-destructive/20 flex items-center justify-center border-2 border-destructive">
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    </div>
-                  ),
-                }}
-              />
-            ) : (
-              <SidebarLink
-                link={{
-                  label: displayName,
-                  href: "/profile",
-                  icon: (
-                    <div className="h-8 w-8 shrink-0 rounded-full bg-primary flex items-center justify-center border-2 border-primary shadow-lg shadow-primary/20">
-                      <span className="text-xs font-bold text-primary-foreground">
-                        {displayName.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  ),
-                }}
-              />
-            )}
-          </div>
-        </SidebarBody>
-      </Sidebar>
-
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden bg-transparent">
+    <div className="flex flex-1 flex-col overflow-hidden bg-transparent">
         <DashboardHeader
           progress={{ current: 582200, target: 650000 }}
           userName={authLoading ? "Carregando…" : displayName}
@@ -367,7 +223,5 @@ export default function DashboardPage() {
           )}
         </main>
       </div>
-    </div>
   );
 }
-

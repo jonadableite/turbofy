@@ -24,6 +24,9 @@ model Merchant {
   balance         Decimal          @default(0)
   fee             Decimal          @default(0)
   bankAccount     BankAccount?
+  checkoutConfig  CheckoutConfig?
+  checkoutSessions CheckoutSession[]
+  users           User[]
 }
 
 model User {
@@ -38,6 +41,8 @@ model User {
   otps                UserOtp[]
   tokens              UserToken[]
   passwordResetTokens PasswordResetToken[]
+  merchantId          String?
+  merchant            Merchant?            @relation(fields: [merchantId], references: [id])
 }
 
 model UserOtp {
@@ -180,6 +185,7 @@ model Charge {
   updatedAt      DateTime      @updatedAt
   splits         ChargeSplit[]
   fees           Fee[]
+  sessions       CheckoutSession[]
 
   @@index([merchantId])
 }
@@ -303,4 +309,43 @@ model WebhookAttempt {
   @@index([provider, type, status])
   @@index([eventId])
   @@index([createdAt])
+}
+
+/// ---------------------------------------
+/// Checkout models (white-label)
+/// ---------------------------------------
+
+enum CheckoutSessionStatus {
+  CREATED
+  OPENED
+  COMPLETED
+  EXPIRED
+}
+
+model CheckoutConfig {
+  id          String   @id @default(uuid())
+  merchantId  String   @unique
+  merchant    Merchant @relation(fields: [merchantId], references: [id])
+  logoUrl     String?
+  themeTokens Json?
+  animations  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CheckoutSession {
+  id            String                @id @default(uuid())
+  chargeId      String
+  charge        Charge                @relation(fields: [chargeId], references: [id])
+  merchantId    String
+  merchant      Merchant              @relation(fields: [merchantId], references: [id])
+  status        CheckoutSessionStatus @default(CREATED)
+  returnUrl     String?
+  cancelUrl     String?
+  themeSnapshot Json?
+  expiresAt     DateTime?
+  createdAt     DateTime              @default(now())
+
+  @@index([merchantId])
+  @@index([chargeId])
 }

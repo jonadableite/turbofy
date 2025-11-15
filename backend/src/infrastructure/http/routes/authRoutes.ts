@@ -104,6 +104,7 @@ authRouter.get('/me', meLimiter, authMiddleware, async (req: Request, res: Respo
         roles: true,
         document: true,
         phone: true,
+        merchantId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -117,9 +118,10 @@ authRouter.get('/me', meLimiter, authMiddleware, async (req: Request, res: Respo
       id: user.id,
       email: user.email,
       roles: user.roles,
-      name: user.email.split('@')[0], // Fallback para nome
+      name: user.email.split('@')[0],
       document: user.document,
       phone: user.phone,
+      merchantId: user.merchantId,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });
