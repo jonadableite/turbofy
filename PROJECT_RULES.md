@@ -549,6 +549,17 @@ Antes de commitar código, verificar:
 - [ ] ✅ Sem secrets no código
 - [ ] ✅ Documentação de decisões complexas
 
+## 📚 Documentação Complementar
+
+- `README.md` – Visão geral do monorepo.
+- `AGENTS.md` + `AGENT_PLAYBOOK.md` – Contrato do agente e playbook operacional.
+- `PROJECT_COMMANDS.md` / `USER_COMMANDS.md` – Comandos técnicos e fluxo diário.
+- `backend/docs/charges.md` – Domínio de cobranças.
+- `backend/docs/checkout.md` – Fluxo end-to-end do checkout white-label.
+- `backend/docs/payment-providers.md` – Estratégia de provedores (Transfeera, BSPay, Stub).
+- `backend/docs/financial-flow.md` – Relação entre cobranças, splits, settlements e reconciliação.
+- `frontend/PROJECT_RULES.md` – Diretrizes específicas do frontend.
+
 ## 📚 Referências
 
 - [Arquitetura Hexagonal - Alistair Cockburn](https://alistair.cockburn.us/hexagonal-architecture/)

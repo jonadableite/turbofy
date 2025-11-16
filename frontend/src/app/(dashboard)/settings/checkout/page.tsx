@@ -20,6 +20,7 @@ interface CheckoutConfigResponse {
 const schema = z.object({
   merchantId: z.string().uuid(),
   logoUrl: z.string().url().optional().or(z.literal("")),
+  brandName: z.string().min(1).optional(),
   primary: z.string().optional(),
   background: z.string().optional(),
   text: z.string().optional(),
@@ -43,6 +44,7 @@ export default function CheckoutBrandingPage() {
     defaultValues: {
       merchantId: inferredMerchantId,
       logoUrl: "",
+      brandName: "Sua Marca",
       primary: "oklch(0.65 0.2 250)",
       background: "oklch(0.12 0.03 255)",
       text: "oklch(0.95 0.02 255)",
@@ -87,6 +89,7 @@ export default function CheckoutBrandingPage() {
       form.reset({
         merchantId: res.data.merchantId,
         logoUrl: (res.data.logoUrl || undefined) as string | undefined,
+        brandName: (t["brandName"] as string) || "Sua Marca",
         primary: (t["primary"] as string) || "oklch(0.65 0.2 250)",
         background: (t["background"] as string) || "oklch(0.12 0.03 255)",
         text: (t["text"] as string) || "oklch(0.95 0.02 255)",
@@ -94,6 +97,9 @@ export default function CheckoutBrandingPage() {
         fontFamily: (t["fontFamily"] as string) || "Inter, system-ui, sans-serif",
         animations: res.data.animations,
       });
+    } catch (e: any) {
+      // Mostrar erro amigável no formulário
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -111,6 +117,7 @@ export default function CheckoutBrandingPage() {
           const res = await api.post<{ merchantId: string }>("/dashboard/merchant/ensure");
           setInferredMerchantId(res.data.merchantId);
           form.setValue("merchantId", res.data.merchantId);
+          await load();
         }
       } catch {
         // ignore
@@ -128,6 +135,7 @@ export default function CheckoutBrandingPage() {
         logoUrl: values.logoUrl || null,
         animations: values.animations,
         themeTokens: {
+          brandName: values.brandName,
           primary: values.primary,
           background: values.background,
           text: values.text,
@@ -139,6 +147,7 @@ export default function CheckoutBrandingPage() {
       const msg = {
         type: "turbofy.theme.update",
         themeTokens: {
+          brandName: values.brandName,
           primary: values.primary,
           background: values.background,
           text: values.text,
@@ -175,6 +184,10 @@ export default function CheckoutBrandingPage() {
           <div>
             <Label htmlFor="logoUrl">Logo URL</Label>
             <Input id="logoUrl" {...form.register("logoUrl")} placeholder="https://.../logo.png" />
+          </div>
+          <div>
+            <Label htmlFor="brandName">Nome da Empresa</Label>
+            <Input id="brandName" {...form.register("brandName")} placeholder="Ex.: Clickmax" />
           </div>
           {mode === "simples" ? (
             <div className="md:col-span-2">
@@ -235,8 +248,57 @@ export default function CheckoutBrandingPage() {
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-2">Preview</h2>
         <div className="p-6 border shadow" style={previewStyle}>
-          <div className="text-xl font-bold mb-2">{form.getValues("logoUrl") ? "Sua Marca" : "Checkout"}</div>
-          <div className="opacity-80 text-sm">Exemplo de cartão do checkout com suas cores e fonte.</div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div>
+              <div className="rounded border p-4" style={{ borderRadius: form.getValues("radius") }}>
+                <div className="flex items-start gap-3">
+                  <img src="/file.svg" alt="Produto" width={40} height={40} />
+                  <div>
+                    <div className="font-semibold">{form.getValues("brandName") || "Sua Marca"}</div>
+                    <div className="text-xs opacity-70">ou R$ {(5500/100).toFixed(2)} à vista</div>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="text-xs opacity-70">12x</div>
+                  <div className="text-xl font-bold">R$ {((5500/12)/100).toFixed(2)}</div>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <img src="/visaico.svg" alt="Visa" width={28} height={18} />
+                  <img src="/mastercardico.svg" alt="Mastercard" width={28} height={18} />
+                  <img src="/outrasbandeiras.svg" alt="Outras" width={28} height={18} />
+                </div>
+              </div>
+            </div>
+            <div className="lg:col-span-2">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold">R$ {(5500/100).toFixed(2)}</div>
+                  <div className="text-xs opacity-70">BRL</div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded border" style={{ borderColor: form.getValues("primary") }}>
+                    <img src="/cartao.svg" alt="Cartão" width={16} height={16} />
+                    Cartão de Crédito
+                  </button>
+                  <button className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded border" style={{ borderColor: form.getValues("primary") }}>
+                    <img src="/pix.svg" alt="Pix" width={16} height={16} />
+                    Pix
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <input className="w-full px-3 py-2 rounded border" placeholder="Nome completo" />
+                  <input className="w-full px-3 py-2 rounded border" placeholder="Email" type="email" />
+                  <input className="w-full px-3 py-2 rounded border" placeholder="CPF/CNPJ" />
+                </div>
+                <button className="w-full px-4 py-2 rounded text-primary-foreground" style={{ background: form.getValues("primary") }}>Pagar com Pix</button>
+                <div className="grid grid-cols-3 gap-3 text-xs opacity-80">
+                  <div className="text-center">COMPRA 100% SEGURA</div>
+                  <div className="text-center">PRIVACIDADE PROTEGIDA</div>
+                  <div className="text-center">SITE SEGURO SSL CERTIFICADO</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <LiveCheckoutPreview
           merchantId={form.watch("merchantId") || inferredMerchantId}
@@ -279,12 +341,19 @@ function LiveCheckoutPreview({ merchantId, theme }: { merchantId?: string | null
       setError(e?.message || "Falha ao criar sessão de checkout.");
     }
   }
-  
+
   useEffect(() => {
     if (iframeEl && sessionUrl) {
       iframeEl.contentWindow?.postMessage({ type: "turbofy.theme.update", themeTokens: theme }, "*");
     }
   }, [iframeEl, sessionUrl, theme]);
+
+  useEffect(() => {
+    if (!sessionUrl && merchantId) {
+      createSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [merchantId]);
   return (
     <div className="mt-6">
       <div className="flex gap-3 items-center">
@@ -295,7 +364,16 @@ function LiveCheckoutPreview({ merchantId, theme }: { merchantId?: string | null
       {error && <div className="mt-2 text-sm text-destructive">{error}</div>}
       {sessionUrl && (
         <div className="mt-4">
-          <iframe src={sessionUrl} style={{ width: "100%", height: 600, border: 0 }} ref={(el) => setIframeEl(el)} />
+          <iframe
+            src={sessionUrl}
+            style={{ width: "100%", height: 600, border: 0 }}
+            ref={(el) => setIframeEl(el)}
+            onLoad={() => {
+              try {
+                iframeEl?.contentWindow?.postMessage({ type: "turbofy.theme.update", themeTokens: theme }, "*");
+              } catch {}
+            }}
+          />
         </div>
       )}
     </div>

@@ -27,6 +27,8 @@ model Merchant {
   checkoutConfig  CheckoutConfig?
   checkoutSessions CheckoutSession[]
   users           User[]
+  providerCredentials ProviderCredentials[]
+  paymentInteractions PaymentInteraction[]
 }
 
 model User {
@@ -43,6 +45,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   merchantId          String?
   merchant            Merchant?            @relation(fields: [merchantId], references: [id])
+  paymentInteractions PaymentInteraction[]
 }
 
 model UserOtp {
@@ -186,6 +189,7 @@ model Charge {
   splits         ChargeSplit[]
   fees           Fee[]
   sessions       CheckoutSession[]
+  interactions   PaymentInteraction[]
 
   @@index([merchantId])
 }
@@ -345,7 +349,54 @@ model CheckoutSession {
   themeSnapshot Json?
   expiresAt     DateTime?
   createdAt     DateTime              @default(now())
+  interactions  PaymentInteraction[]
 
   @@index([merchantId])
+  @@index([chargeId])
+}
+
+model ProviderCredentials {
+  id             String   @id @default(uuid())
+  merchantId     String
+  merchant       Merchant @relation(fields: [merchantId], references: [id])
+  provider       String
+  clientId       String
+  clientSecret   String
+  accessToken    String?
+  tokenExpiresAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([merchantId, provider])
+  @@index([merchantId])
+}
+
+enum PaymentInteractionType {
+  CHARGE_CREATED
+  PIX_ISSUED
+  BOLETO_ISSUED
+  CHARGE_PAID
+  CHARGE_EXPIRED
+  CHECKOUT_SESSION_CREATED
+}
+
+model PaymentInteraction {
+  id          String                 @id @default(uuid())
+  merchantId  String
+  merchant    Merchant               @relation(fields: [merchantId], references: [id])
+  userId      String?
+  user        User?                  @relation(fields: [userId], references: [id])
+  chargeId    String?
+  charge      Charge?                @relation(fields: [chargeId], references: [id])
+  sessionId   String?
+  session     CheckoutSession?       @relation(fields: [sessionId], references: [id])
+  type        PaymentInteractionType
+  method      String?
+  provider    String?
+  amountCents Int?
+  metadata    Json?
+  createdAt   DateTime               @default(now())
+
+  @@index([merchantId, type, createdAt])
   @@index([chargeId])
 }

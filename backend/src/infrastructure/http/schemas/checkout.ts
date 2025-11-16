@@ -5,9 +5,9 @@ export const CreateCheckoutSessionRequestSchema = z.object({
   amountCents: z.number().int().positive(),
   currency: z.string().default("BRL"),
   description: z.string().optional(),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.string().optional(),
   externalRef: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   returnUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
 });
@@ -18,8 +18,8 @@ export const CreateCheckoutSessionResponseSchema = z.object({
   merchantId: z.string().uuid(),
   status: z.enum(["CREATED", "OPENED", "COMPLETED", "EXPIRED"]),
   url: z.string().url(),
-  expiresAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
 });
 
 export const GetCheckoutSessionResponseSchema = z.object({
@@ -31,21 +31,21 @@ export const GetCheckoutSessionResponseSchema = z.object({
   currency: z.string(),
   description: z.string().nullable(),
   pix: z
-    .object({ qrCode: z.string(), copyPaste: z.string(), expiresAt: z.string().datetime() })
+    .object({ qrCode: z.string(), copyPaste: z.string(), expiresAt: z.string() })
     .optional(),
   boleto: z
-    .object({ boletoUrl: z.string().url(), expiresAt: z.string().datetime() })
+    .object({ boletoUrl: z.string().url(), expiresAt: z.string() })
     .optional(),
   theme: z
     .object({
       logoUrl: z.string().url().nullable().optional(),
-      themeTokens: z.record(z.unknown()).nullable().optional(),
+      themeTokens: z.record(z.string(), z.unknown()).nullable().optional(),
       animations: z.boolean().optional(),
     })
     .nullable()
     .optional(),
-  expiresAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
 });
 
 export const UpdateCheckoutConfigRequestSchema = z.object({
@@ -71,7 +71,7 @@ export const UpdateCheckoutConfigRequestSchema = z.object({
 export const CheckoutConfigResponseSchema = z.object({
   merchantId: z.string().uuid(),
   logoUrl: z.string().url().nullable(),
-  themeTokens: z.record(z.unknown()).nullable(),
+  themeTokens: z.record(z.string(), z.unknown()).nullable(),
   animations: z.boolean(),
-  updatedAt: z.string().datetime(),
+  updatedAt: z.string(),
 });

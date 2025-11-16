@@ -1,0 +1,57 @@
+# Checkout Flow Consistency - Version: 1.0.0
+
+## Purpose & Scope
+
+Ensure every change touching the white-label checkout respects the backend contracts, documentation, and UX expectations. Applies to `backend/src/**/*checkout*`, checkout-related use cases, and `frontend/src/components/checkout/**`.
+
+## Implementation Guidelines
+
+- ALWAYS read `backend/docs/checkout.md` before modifying checkout endpoints, use cases, or repositories to understand required payloads, idempotency headers, and message publishing.
+- MUST keep backend and frontend payloads in sync. When the backend response adds/removes fields (e.g., `theme`, `pix`, `boleto`), immediately reflect them in `SessionResponse` and any Zod schemas in the frontend.
+- MUST honor idempotency: every request to `POST /checkout/sessions` or `POST /checkout/charges/:id/issue` requires `X-Idempotency-Key`. Document the expectation in tests and handlers when new flows are introduced.
+- SHOULD reuse or extend the existing `PaymentProviderFactory` instead of creating ad-hoc provider logic inside routes or components. Update `backend/docs/payment-providers.md` if capabilities change.
+- BEFORE updating checkout UX, confirm `frontend/PROJECT_RULES.md` for motion/accessibility rules and ensure timers, loaders, and CTAs remain keyboard-accessible.
+- WHEN introducing new checkout endpoints or behavior, update:
+  - `backend/docs/checkout.md`
+  - `frontend/README.md` (integration details)
+  - `.cursor/rules/apis.mdc` (endpoint catalog)
+- ALWAYS add or adjust automated tests: backend (use case/controller) plus frontend component or integration test covering the new behavior.
+
+### Examples
+
+```ts
+// ✅ DO: return the fields documented in backend/docs/checkout.md
+res.status(200).json({
+  id: charge.id,
+  method: charge.method ?? null,
+  pix: charge.pixQrCode
+    ? { qrCode: charge.pixQrCode, copyPaste: charge.pixCopyPaste!, expiresAt }
+    : undefined,
+  boleto: charge.boletoUrl ? { boletoUrl: charge.boletoUrl, expiresAt } : undefined,
+});
+
+// ❌ DON'T: add frontend-only fields without updating contracts/docs
+res.json({
+  id: charge.id,
+  pixPayload: charge.pixQrCode, // undocumented alias – breaks PaymentSelector
+});
+```
+
+## Restrictions
+
+- NEVER bypass `PaymentProviderFactory` or store provider credentials inline in routes/components.
+- NEVER ship checkout changes without updating the referenced documentation.
+
+## Related Rules
+
+- `@apis.mdc`
+- `@project.mdc`
+- `@memory.mdc`
+
+## Suggested Metadata
+
+---
+description: Keep checkout backend/frontend changes aligned with documented contracts and UX.
+globs: ["backend/src/**/*checkout*.ts", "frontend/src/components/checkout/**/*.tsx"]
+alwaysApply: false
+---

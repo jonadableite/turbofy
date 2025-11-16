@@ -5,6 +5,7 @@ import { PaymentProviderPort } from "../../ports/PaymentProviderPort";
 import { StubPaymentProviderAdapter } from "../../infrastructure/adapters/payment/StubPaymentProviderAdapter";
 import { MessagingPort } from "../../ports/MessagingPort";
 import { ChargeMethod, ChargeStatus } from "../../domain/entities/Charge";
+import { PaymentInteractionRepository } from "../../ports/repositories/PaymentInteractionRepository";
 
 describe("CreateCharge use case", () => {
   const merchantId = "8a29e7a2-7b91-4b7a-9b3e-3a0f3d2b1d55";
@@ -12,6 +13,7 @@ describe("CreateCharge use case", () => {
   let chargeRepository: ChargeRepository;
   let paymentProvider: PaymentProviderPort;
   let messaging: MessagingPort;
+  let paymentInteractionRepository: PaymentInteractionRepository;
 
   beforeEach(() => {
     const memory: Record<string, Charge> = {};
@@ -33,10 +35,19 @@ describe("CreateCharge use case", () => {
 
     paymentProvider = new StubPaymentProviderAdapter();
     messaging = { publish: jest.fn(async () => {}) } as MessagingPort;
+    paymentInteractionRepository = {
+      create: jest.fn(async (interaction) => interaction),
+      listRecentByMerchant: jest.fn(),
+    } as unknown as PaymentInteractionRepository;
   });
 
   it("creates a PIX charge and enriches with provider data", async () => {
-    const useCase = new CreateCharge(chargeRepository, paymentProvider, messaging);
+    const useCase = new CreateCharge(
+      chargeRepository,
+      paymentProvider,
+      messaging,
+      paymentInteractionRepository
+    );
     const { charge } = await useCase.execute({
       idempotencyKey: "idem-PIX-001",
       merchantId,
@@ -57,7 +68,12 @@ describe("CreateCharge use case", () => {
   });
 
   it("is idempotent and returns existing charge on second call", async () => {
-    const useCase = new CreateCharge(chargeRepository, paymentProvider, messaging);
+    const useCase = new CreateCharge(
+      chargeRepository,
+      paymentProvider,
+      messaging,
+      paymentInteractionRepository
+    );
 
     const first = await useCase.execute({
       idempotencyKey: "idem-PIX-002",

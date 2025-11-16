@@ -14,6 +14,8 @@ import { Counter, Histogram, register } from "prom-client";
 import { logger } from "../../logger";
 import { PrismaChargeRepository } from "../../database/PrismaChargeRepository";
 import { ChargeStatus } from "../../../domain/entities/Charge";
+import { PrismaPaymentInteractionRepository } from "../../database/repositories/PrismaPaymentInteractionRepository";
+import { PaymentInteraction, PaymentInteractionType } from "../../../domain/entities/PaymentInteraction";
 
 export const transfeeraWebhookRouter = Router();
 
@@ -225,6 +227,7 @@ async function handleCashInEvent(data: CashInEventData): Promise<void> {
   );
 
   const chargeRepository = new PrismaChargeRepository();
+  const paymentInteractionRepository = new PrismaPaymentInteractionRepository();
   
   // Tentar encontrar cobrança por integration_id (que pode ser nosso externalRef ou merchantId)
   // ou por txid se disponível
@@ -242,6 +245,19 @@ async function handleCashInEvent(data: CashInEventData): Promise<void> {
   if (charge) {
     charge.markAsPaid();
     await chargeRepository.update(charge);
+
+    await paymentInteractionRepository.create(
+      PaymentInteraction.create({
+        merchantId: charge.merchantId,
+        chargeId: charge.id,
+        type: PaymentInteractionType.CHARGE_PAID,
+        amountCents: charge.amountCents,
+        metadata: {
+          txid: data.txid,
+          end2endId: data.end2end_id,
+        },
+      })
+    );
 
     logger.info(
       {
@@ -311,6 +327,7 @@ async function handleChargeReceivableEvent(data: Record<string, unknown>): Promi
   const chargeId = (data as { charge_id?: string }).charge_id;
   if (chargeId) {
     const chargeRepository = new PrismaChargeRepository();
+    const paymentInteractionRepository = new PrismaPaymentInteractionRepository();
     const charge = await chargeRepository.findById(chargeId);
 
     if (charge) {
@@ -325,8 +342,26 @@ async function handleChargeReceivableEvent(data: Record<string, unknown>): Promi
 
       if (status === "paid") {
         charge.markAsPaid();
+        await paymentInteractionRepository.create(
+          PaymentInteraction.create({
+            merchantId: charge.merchantId,
+            chargeId: charge.id,
+            type: PaymentInteractionType.CHARGE_PAID,
+            amountCents: charge.amountCents,
+            metadata: { source: "receivable" },
+          })
+        );
       } else if (status === "expired" || status === "cancelled") {
         charge.markAsExpired();
+        await paymentInteractionRepository.create(
+          PaymentInteraction.create({
+            merchantId: charge.merchantId,
+            chargeId: charge.id,
+            type: PaymentInteractionType.CHARGE_EXPIRED,
+            amountCents: charge.amountCents,
+            metadata: { source: "receivable" },
+          })
+        );
       }
       await chargeRepository.update(charge);
 

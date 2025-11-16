@@ -5,6 +5,7 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { HealthStatusCard } from "@/components/dashboard/health-status-card";
 import { TopProducts } from "@/components/dashboard/top-products";
 import { Achievements } from "@/components/dashboard/achievements";
+import { PaymentActivityTimeline } from "@/components/dashboard/payment-activity-timeline";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useAuth } from "@/contexts/auth-context";
 import { IconShoppingCart, IconChartLine } from "@tabler/icons-react";
@@ -77,6 +78,7 @@ export default function DashboardPage() {
     revenueData,
     healthMetrics,
     topProducts,
+    interactions,
     loading,
     error,
   } = useDashboard(merchantId);
@@ -219,6 +221,13 @@ export default function DashboardPage() {
                 )}
                 <Achievements achievements={mockAchievements} />
               </div>
+
+              {interactions.length > 0 && (
+                <PaymentActivityTimeline
+                  interactions={interactions}
+                  formatCurrency={formatCurrency}
+                />
+              )}
             </div>
           )}
         </main>

@@ -32,14 +32,21 @@ const settlementsRoutes_1 = require("./infrastructure/http/routes/settlementsRou
 const reconciliationsRoutes_1 = require("./infrastructure/http/routes/reconciliationsRoutes");
 const dashboardRoutes_1 = require("./infrastructure/http/routes/dashboardRoutes");
 const transfeeraWebhookRoutes_1 = require("./infrastructure/http/routes/transfeeraWebhookRoutes");
+const checkoutRoutes_1 = require("./infrastructure/http/routes/checkoutRoutes");
 const prom_client_1 = require("prom-client");
 const app = (0, express_1.default)();
 exports.app = app;
 // Middlewares
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    // Nunca usar '*' quando credentials: true. Em dev, permitir o frontend em 3001.
-    origin: process.env.CORS_ORIGIN ?? "http://localhost:3001",
+    origin: (origin, callback) => {
+        const defaults = process.env.CORS_ORIGIN ?? "http://localhost:3001";
+        const allowed = new Set([defaults, "http://localhost:3030"]);
+        if (!origin || allowed.has(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: [
         "Content-Type",
@@ -48,7 +55,7 @@ app.use((0, cors_1.default)({
         "X-Idempotency-Key",
         "X-CSRF-Token",
     ],
-    credentials: true, // Permitir cookies (necessário para HttpOnly cookies)
+    credentials: true,
 }));
 app.use(express_1.default.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
 // Middleware para ignorar requisições conhecidas que retornam 404
@@ -148,6 +155,7 @@ app.get("/healthz", async (_, res) => {
 app.use('/api', apiRoutes_1.apiRouter);
 app.use('/auth', authRoutes_1.authRouter);
 app.use('/charges', chargesRoutes_1.chargesRouter);
+app.use('/checkout', checkoutRoutes_1.checkoutRouter);
 app.use('/settlements', settlementsRoutes_1.settlementsRouter);
 app.use('/reconciliations', reconciliationsRoutes_1.reconciliationsRouter);
 app.use('/dashboard', dashboardRoutes_1.dashboardRouter);
@@ -189,6 +197,8 @@ if (process.env.NODE_ENV !== "test") {
             console.log(chalk_1.default.white('     • POST /auth/forgot-password - Recuperar senha'));
             console.log(chalk_1.default.white('     • GET  /api/auth/csrf       - Token CSRF'));
             console.log(chalk_1.default.white('     • POST /charges             - Criar cobrança'));
+            console.log(chalk_1.default.white('     • POST /checkout/sessions   - Criar sessão de checkout'));
+            console.log(chalk_1.default.white('     • GET  /checkout/sessions/:id - Detalhes da sessão'));
             console.log(chalk_1.default.cyan('═'.repeat(60)));
             console.log(chalk_1.default.green.bold('  [READY] Servidor pronto para receber requisições!\n'));
             logger_1.logger.info('[STARTED] Turbofy API iniciada com sucesso');

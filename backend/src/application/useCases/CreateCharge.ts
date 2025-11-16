@@ -4,11 +4,7 @@
 // 🧪 TESTABILITY: Pure class, collaborators mocked in unit tests
 // 🔄 EXTENSIBILITY: Easy to add new payment methods (Pix, Boleto, CreditCard, etc.)
 
-import {
-  Charge,
-  ChargeMethod,
-  ChargeStatus,
-} from "../../domain/entities/Charge";
+import { Charge, ChargeMethod, ChargeStatus } from "../../domain/entities/Charge";
 import { ChargeSplit } from "../../domain/entities/ChargeSplit";
 import { Fee } from "../../domain/entities/Fee";
 import { ChargeRepository } from "../../ports/ChargeRepository";
@@ -16,10 +12,13 @@ import { PaymentProviderPort } from "../../ports/PaymentProviderPort";
 import { MessagingPort } from "../../ports/MessagingPort";
 import { randomUUID } from "crypto";
 import { logger } from "../../infrastructure/logger";
+import { PaymentInteractionRepository } from "../../ports/repositories/PaymentInteractionRepository";
+import { PaymentInteraction, PaymentInteractionType } from "../../domain/entities/PaymentInteraction";
 
 interface CreateChargeInput {
   idempotencyKey: string;
   merchantId: string;
+  initiatorUserId?: string;
   amountCents: number;
   currency: string;
   description?: string;
@@ -48,7 +47,8 @@ export class CreateCharge {
   constructor(
     private readonly chargeRepository: ChargeRepository,
     private readonly paymentProvider: PaymentProviderPort,
-    private readonly messaging: MessagingPort
+    private readonly messaging: MessagingPort,
+    private readonly paymentInteractionRepository: PaymentInteractionRepository
   ) {}
 
   async execute(input: CreateChargeInput): Promise<CreateChargeOutput> {
@@ -150,6 +150,22 @@ export class CreateCharge {
       persistedFees.push(persistedFee);
     }
 
+    await this.paymentInteractionRepository.create(
+      PaymentInteraction.create({
+        merchantId: persisted.merchantId,
+        userId: input.initiatorUserId,
+        chargeId: persisted.id,
+        type: PaymentInteractionType.CHARGE_CREATED,
+        method: persisted.method,
+        amountCents: persisted.amountCents,
+        metadata: {
+          idempotencyKey: input.idempotencyKey,
+          splits: persistedSplits.length,
+          fees: persistedFees.length,
+        },
+      })
+    );
+
     // 8. Emit payment via provider depending on method
     if (persisted.method === ChargeMethod.PIX) {
       const pixData = await this.paymentProvider.issuePixCharge({
@@ -159,6 +175,20 @@ export class CreateCharge {
         expiresAt: persisted.expiresAt ?? undefined,
       });
       persisted = persisted.withPixData(pixData.qrCode, pixData.copyPaste);
+
+      await this.paymentInteractionRepository.create(
+        PaymentInteraction.create({
+          merchantId: persisted.merchantId,
+          userId: input.initiatorUserId,
+          chargeId: persisted.id,
+          type: PaymentInteractionType.PIX_ISSUED,
+          method: ChargeMethod.PIX,
+          amountCents: persisted.amountCents,
+          metadata: {
+            expiresAt: (persisted.expiresAt ?? new Date()).toISOString(),
+          },
+        })
+      );
     } else if (persisted.method === ChargeMethod.BOLETO) {
       const boletoData = await this.paymentProvider.issueBoletoCharge({
         amountCents: persisted.amountCents,
@@ -167,6 +197,20 @@ export class CreateCharge {
         expiresAt: persisted.expiresAt ?? undefined,
       });
       persisted = persisted.withBoletoData(boletoData.boletoUrl);
+
+      await this.paymentInteractionRepository.create(
+        PaymentInteraction.create({
+          merchantId: persisted.merchantId,
+          userId: input.initiatorUserId,
+          chargeId: persisted.id,
+          type: PaymentInteractionType.BOLETO_ISSUED,
+          method: ChargeMethod.BOLETO,
+          amountCents: persisted.amountCents,
+          metadata: {
+            expiresAt: (persisted.expiresAt ?? new Date()).toISOString(),
+          },
+        })
+      );
     }
 
     // 9. Update persisted charge with payment data (if any)

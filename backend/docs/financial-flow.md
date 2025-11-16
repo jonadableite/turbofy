@@ -4,6 +4,21 @@
 
 Implementação completa do fluxo financeiro incluindo criação de cobranças com splits, repasses (settlements) e conciliação bancária (reconciliations), seguindo arquitetura hexagonal.
 
+```mermaid
+flowchart LR
+    A[POST /charges] -->|CreateCharge| B(Charge)
+    B --> C{ChargeSplit}
+    B --> D{Fee}
+    B -->|status=PAID| E[Settlement]
+    E --> F[BankingPort]
+    F --> E
+    E -->|completed| G[Reconciliation Input]
+    G --> H[RunReconciliation]
+    H -->|payloads| I[Events turbofy.*]
+```
+
+> Para detalhes do checkout público consulte `backend/docs/checkout.md`.
+
 ## Entidades de Domínio
 
 ### 1. Charge (Cobrança)

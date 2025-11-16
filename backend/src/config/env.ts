@@ -28,6 +28,7 @@ const envSchema = z.object({
   RECAPTCHA_SECRET_KEY: z.string().optional(), // Opcional para desenvolvimento
   FRONTEND_URL: z.string().url().default("http://localhost:3001"), // URL do frontend para links de email
   ALERT_EMAIL_TO: z.string().optional(),
+  TURBOFY_CREDENTIALS_ENC_KEY: z.string().min(32, "TURBOFY_CREDENTIALS_ENC_KEY must be at least 32 characters").default("x".repeat(32)),
   
   // Transfeera API Configuration
   TRANSFEERA_CLIENT_ID: z.string().optional(), // Opcional - usado apenas se Transfeera estiver habilitado
@@ -57,6 +58,7 @@ function testDefaults(): z.infer<typeof envSchema> {
     RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY,
     FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3001",
     ALERT_EMAIL_TO: process.env.ALERT_EMAIL_TO,
+    TURBOFY_CREDENTIALS_ENC_KEY: process.env.TURBOFY_CREDENTIALS_ENC_KEY || "x".repeat(32),
     TRANSFEERA_CLIENT_ID: process.env.TRANSFEERA_CLIENT_ID,
     TRANSFEERA_CLIENT_SECRET: process.env.TRANSFEERA_CLIENT_SECRET,
     TRANSFEERA_API_URL: process.env.TRANSFEERA_API_URL || "https://api-sandbox.transfeera.com",

@@ -5,10 +5,13 @@ import { ChargeRepository } from "../../ports/ChargeRepository";
 import { PaymentProviderPort } from "../../ports/PaymentProviderPort";
 import { MessagingPort } from "../../ports/MessagingPort";
 import { logger } from "../../infrastructure/logger";
+import { PaymentInteractionRepository } from "../../ports/repositories/PaymentInteractionRepository";
+import { PaymentInteraction, PaymentInteractionType } from "../../domain/entities/PaymentInteraction";
 
 interface CreateCheckoutSessionInput {
   idempotencyKey: string;
   merchantId: string;
+  initiatorUserId?: string;
   amountCents: number;
   currency: string;
   description?: string;
@@ -29,20 +32,29 @@ export class CreateCheckoutSession {
     private readonly paymentProvider: PaymentProviderPort,
     private readonly messaging: MessagingPort,
     private readonly checkoutConfigRepository: CheckoutConfigRepository,
-    private readonly checkoutSessionRepository: CheckoutSessionRepository
+    private readonly checkoutSessionRepository: CheckoutSessionRepository,
+    private readonly paymentInteractionRepository: PaymentInteractionRepository
   ) {}
 
   async execute(input: CreateCheckoutSessionInput): Promise<CreateCheckoutSessionOutput> {
-    const createCharge = new CreateCharge(this.chargeRepository, this.paymentProvider, this.messaging);
+    const PLATFORM_FEE_PERCENT = 1;
+    const createCharge = new CreateCharge(
+      this.chargeRepository,
+      this.paymentProvider,
+      this.messaging,
+      this.paymentInteractionRepository
+    );
     const chargeResult = await createCharge.execute({
       idempotencyKey: input.idempotencyKey,
       merchantId: input.merchantId,
+      initiatorUserId: input.initiatorUserId,
       amountCents: input.amountCents,
       currency: input.currency,
       description: input.description,
       expiresAt: input.expiresAt,
       externalRef: input.externalRef,
       metadata: input.metadata,
+      fees: [{ type: "platform", amountCents: Math.round((input.amountCents * PLATFORM_FEE_PERCENT) / 100) }],
     });
 
     const config = await this.checkoutConfigRepository.findByMerchantId(input.merchantId);
@@ -55,6 +67,21 @@ export class CreateCheckoutSession {
       themeSnapshot: config?.themeTokens ? { themeTokens: config.themeTokens, logoUrl: config.logoUrl, animations: config.animations } : null,
       expiresAt: input.expiresAt ?? null,
     });
+
+    await this.paymentInteractionRepository.create(
+      PaymentInteraction.create({
+        merchantId: input.merchantId,
+        chargeId: chargeResult.charge.id,
+        sessionId: session.id,
+        type: PaymentInteractionType.CHECKOUT_SESSION_CREATED,
+        userId: input.initiatorUserId,
+        amountCents: chargeResult.charge.amountCents,
+        metadata: {
+          returnUrl: session.returnUrl,
+          cancelUrl: session.cancelUrl,
+        },
+      })
+    );
 
     logger.info({ useCase: "CreateCheckoutSession", entityId: session.id }, "Checkout session created");
 

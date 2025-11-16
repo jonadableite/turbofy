@@ -141,4 +141,26 @@ export class Charge {
       updatedAt: new Date(),
     });
   }
+
+  withMethod(method: ChargeMethod): Charge {
+    return new Charge({
+      id: this.id,
+      merchantId: this.merchantId,
+      amountCents: this.amountCents,
+      currency: this.currency,
+      description: this.description,
+      status: this._status,
+      method,
+      expiresAt: this.expiresAt,
+      idempotencyKey: this.idempotencyKey,
+      externalRef: this.externalRef,
+      metadata: this.metadata,
+      pixQrCode: this.pixQrCode,
+      pixCopyPaste: this.pixCopyPaste,
+      boletoUrl: this.boletoUrl,
+      pixTxid: this.pixTxid,
+      createdAt: this.createdAt,
+      updatedAt: new Date(),
+    });
+  }
 }

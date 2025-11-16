@@ -1,0 +1,94 @@
+---
+alwaysApply: true
+---
+# Turbofy API Documentation - Version: 1.0.0
+
+## Purpose & Scope
+
+This document serves as the central repository for documentation on all API endpoints within the ChatAI application. It provides details on endpoint paths, HTTP methods, purpose, request/response formats, and authentication requirements.
+
+**MUST** be consulted and updated whenever API endpoints are created, modified, or deleted, as mandated by `@memory.mdc`.
+
+## API endpoint example
+
+---
+
+### `[HTTP_METHOD] /path/to/endpoint`
+
+*   **Purpose:** [Briefly describe what the endpoint does.]
+*   **Authentication:** [Specify required authentication (e.g., Clerk user, Public, None, Admin Role).] 
+*   **Request Parameters (URL/Query):**
+    *   `paramName` (type): [Description, e.g., required, optional, validation rules].
+*   **Request Body (JSON):**
+    ```json
+    {
+      "key": "value_type" // Description
+    }
+    ```
+*   **Success Response (200 OK):**
+    ```json
+    {
+      "key": "value_type" // Description
+    }
+    ```
+*   **Error Responses:**
+    *   `400 Bad Request`: [Reason, e.g., Invalid input data.]
+    *   `401 Unauthorized`: [Reason, e.g., Missing or invalid authentication token.]
+    *   `403 Forbidden`: [Reason, e.g., Insufficient permissions.]
+    *   `404 Not Found`: [Reason, e.g., Resource not found.]
+    *   `500 Internal Server Error`: [Reason, e.g., Unexpected server error.]
+*   **Notes:** [Any additional information, implementation details, or usage notes.]
+
+---
+
+## API Endpoints
+
+### `GET /dashboard/interactions`
+
+* **Purpose:** Returns the latest payment interactions (charge creation, Pix issuance, boleto, payments, checkout sessions) for analytics dashboards.
+* **Authentication:** None (merchantId query param required; endpoints inherit CORS protections).
+* **Request Parameters (URL/Query):**
+  * `merchantId` (string, required): Merchant owner of the interactions.
+  * `limit` (number, optional, default 20, max 100): Number of records to return.
+* **Success Response (200 OK):**
+  ```json
+  [
+    {
+      "id": "interaction-uuid",
+      "chargeId": "charge-uuid",
+      "sessionId": "session-uuid",
+      "type": "PIX_ISSUED",
+      "method": "PIX",
+      "provider": "TRANSFEERA",
+      "amountCents": 15000,
+      "metadata": {
+        "expiresAt": "2025-11-15T10:00:00.000Z"
+      },
+      "createdAt": "2025-11-15T09:42:00.000Z",
+      "user": {
+        "id": "user-uuid",
+        "email": "owner@merchant.com"
+      }
+    }
+  ]
+  ```
+* **Error Responses:**
+  * `400 MERCHANT_ID_REQUIRED`: missing merchantId query.
+  * `500 INTERNAL_ERROR`: unexpected server error.
+* **Notes:** Backed by the `PaymentInteraction` table; results are ordered by `createdAt desc`.
+
+---
+
+
+
+## Related Rules
+
+- `@memory.mdc`: Mandates consultation and updates to this file.
+- `@api-development-standards.mdc`: Defines standards for creating API endpoints.
+
+## Suggested Metadata
+---
+description: Central documentation for all [SEUPROJETOAQUI] API endpoints.
+globs: ["src/app/api/**/*.ts"]
+alwaysApply: false
+---

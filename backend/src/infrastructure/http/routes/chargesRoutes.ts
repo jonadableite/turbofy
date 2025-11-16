@@ -7,6 +7,7 @@ import { InMemoryMessagingAdapter } from "../../adapters/messaging/InMemoryMessa
 import { CreateCharge } from "../../../application/useCases/CreateCharge";
 import { logger } from "../../logger";
 import { ChargeMethod } from "../../../domain/entities/Charge";
+import { PrismaPaymentInteractionRepository } from "../../database/repositories/PrismaPaymentInteractionRepository";
 
 export const chargesRouter = Router();
 
@@ -27,8 +28,14 @@ chargesRouter.post("/", async (req: Request, res: Response) => {
     const chargeRepository = new PrismaChargeRepository();
     const paymentProvider = PaymentProviderFactory.create();
     const messaging = new InMemoryMessagingAdapter();
+    const paymentInteractionRepository = new PrismaPaymentInteractionRepository();
 
-    const useCase = new CreateCharge(chargeRepository, paymentProvider, messaging);
+    const useCase = new CreateCharge(
+      chargeRepository,
+      paymentProvider,
+      messaging,
+      paymentInteractionRepository
+    );
 
     // With nativeEnum, parsed.method is already a ChargeMethod
     const methodEnum: ChargeMethod | undefined = parsed.method;
@@ -36,6 +43,7 @@ chargesRouter.post("/", async (req: Request, res: Response) => {
     const result = await useCase.execute({
       idempotencyKey: req.header("X-Idempotency-Key") as string,
       merchantId: parsed.merchantId,
+      initiatorUserId: req.user?.id,
       amountCents: parsed.amountCents,
       currency: parsed.currency,
       description: parsed.description,

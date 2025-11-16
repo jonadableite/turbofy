@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Turbofy Database Schema
+
+## Purpose & Scope
+This rule provides an overview of the Turbofy application's primary database schema (`public`) and functions within Supabase. It outlines the main tables, their relationships, and crucial interaction patterns. This guides both AI and developers in querying and mutating data safely and consistently.
+
+## Schema Overview (Public Schema)
+
+The `public` schema hosts the core application data. Key entity groups include:
+
+- **Merchants/Users**: ownership/auth for the gateway.
+- **Charges/Fees/Splits**: lifecycle of cobrancas.
+- **Checkout Sessions**: white-label flows.
+- **PaymentInteractions** (novo): audit log that stores every payment touchpoint (charge creation, Pix/Boleto issuance, checkout session creation, payments paid/expired). Fields: `merchantId`, optional `userId`, optional `chargeId`/`sessionId`, `type` enum (`CHARGE_CREATED`, `PIX_ISSUED`, `BOLETO_ISSUED`, `CHARGE_PAID`, `CHARGE_EXPIRED`, `CHECKOUT_SESSION_CREATED`), optional `method`, `provider`, `amountCents`, `metadata JSON`, timestamps. Indexed by `(merchantId, type, createdAt)` to power dashboard analytics.
+
+## Key Relationships
+
+Not yet developed.
+
+## Functions
+
+### Key Functions (RPC):
+Not yet developed.
+
+## Restrictions
+*   Do not query or modify tables outside the `public` schema unless explicitly necessary for Supabase features.
+
+## Related Rules
+*   @project.mdc: Overall project structure, tech stack, and development standards.

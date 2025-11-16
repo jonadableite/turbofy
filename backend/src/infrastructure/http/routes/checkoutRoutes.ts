@@ -12,6 +12,7 @@ import { logger } from "../../logger";
 import { env } from "../../../config/env";
 import { ChargeMethod } from "../../../domain/entities/Charge";
 import { UpdateCheckoutConfigRequestSchema, CheckoutConfigResponseSchema } from "../schemas/checkout";
+import { PrismaPaymentInteractionRepository } from "../../database/repositories/PrismaPaymentInteractionRepository";
 
 export const checkoutRouter = Router();
 
@@ -24,23 +25,26 @@ checkoutRouter.post("/sessions", async (req: Request, res: Response) => {
     const parsed = CreateCheckoutSessionRequestSchema.parse(req.body);
 
     const chargeRepository = new PrismaChargeRepository();
-    const paymentProvider = PaymentProviderFactory.create();
+    const paymentProvider = await PaymentProviderFactory.createForMerchant(parsed.merchantId);
     const messaging = new InMemoryMessagingAdapter();
     const configRepository = new PrismaCheckoutConfigRepository();
     const sessionRepository = new PrismaCheckoutSessionRepository();
+    const paymentInteractionRepository = new PrismaPaymentInteractionRepository();
 
     const useCase = new CreateCheckoutSession(
       chargeRepository,
       paymentProvider,
       messaging,
       configRepository,
-      sessionRepository
+      sessionRepository,
+      paymentInteractionRepository
     );
 
     const { session } = await useCase.execute({
       idempotencyKey: idemKey as string,
       merchantId: parsed.merchantId,
       amountCents: parsed.amountCents,
+      initiatorUserId: req.user?.id,
       currency: parsed.currency,
       description: parsed.description,
       expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : undefined,
@@ -102,8 +106,7 @@ checkoutRouter.get("/sessions/:id", async (req: Request, res: Response) => {
       createdAt: session.createdAt.toISOString(),
     };
 
-    const response = GetCheckoutSessionResponseSchema.parse(data);
-    res.status(200).json(response);
+    res.status(200).json(data);
   } catch (err) {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: err.message, details: err.flatten() } });
@@ -125,16 +128,41 @@ checkoutRouter.post("/charges/:id/issue", async (req: Request, res: Response) =>
     }
 
     const chargeRepository = new PrismaChargeRepository();
-    const paymentProvider = PaymentProviderFactory.create();
+    const existingCharge = await chargeRepository.findById(req.params.id);
+    if (!existingCharge) {
+      return res.status(404).json({ error: { code: "NOT_FOUND", message: "Cobrança não encontrada" } });
+    }
 
-    const useCase = new IssuePaymentForCharge(chargeRepository, paymentProvider);
-    const { charge } = await useCase.execute({ chargeId: req.params.id, method: ChargeMethod[method] });
+    const paymentProvider = await PaymentProviderFactory.createForMerchant(existingCharge.merchantId);
+    const paymentInteractionRepository = new PrismaPaymentInteractionRepository();
+
+    const useCase = new IssuePaymentForCharge(
+      chargeRepository,
+      paymentProvider,
+      paymentInteractionRepository
+    );
+    const { charge: issuedCharge } = await useCase.execute({
+      chargeId: req.params.id,
+      method: ChargeMethod[method],
+      initiatorUserId: req.user?.id,
+    });
 
     const response = {
-      id: charge.id,
-      method: charge.method ?? null,
-      pix: charge.pixQrCode ? { qrCode: charge.pixQrCode, copyPaste: charge.pixCopyPaste!, expiresAt: (charge.expiresAt ?? new Date()).toISOString() } : undefined,
-      boleto: charge.boletoUrl ? { boletoUrl: charge.boletoUrl, expiresAt: (charge.expiresAt ?? new Date()).toISOString() } : undefined,
+      id: issuedCharge.id,
+      method: issuedCharge.method ?? null,
+      pix: issuedCharge.pixQrCode
+        ? {
+            qrCode: issuedCharge.pixQrCode,
+            copyPaste: issuedCharge.pixCopyPaste!,
+            expiresAt: (issuedCharge.expiresAt ?? new Date()).toISOString(),
+          }
+        : undefined,
+      boleto: issuedCharge.boletoUrl
+        ? {
+            boletoUrl: issuedCharge.boletoUrl,
+            expiresAt: (issuedCharge.expiresAt ?? new Date()).toISOString(),
+          }
+        : undefined,
     };
 
     res.status(200).json(response);
@@ -155,13 +183,13 @@ checkoutRouter.get("/config", async (req: Request, res: Response) => {
     }
     const configRepository = new PrismaCheckoutConfigRepository();
     const config = await configRepository.findByMerchantId(merchantId);
-    const response = CheckoutConfigResponseSchema.parse({
+    const response = {
       merchantId,
       logoUrl: config?.logoUrl ?? null,
       themeTokens: config?.themeTokens ?? null,
       animations: config?.animations ?? true,
       updatedAt: (config?.updatedAt ?? new Date()).toISOString(),
-    });
+    };
     res.status(200).json(response);
   } catch (err) {
     if (err instanceof ZodError) {
@@ -182,13 +210,13 @@ checkoutRouter.put("/config", async (req: Request, res: Response) => {
       themeTokens: parsed.themeTokens ?? undefined,
       animations: parsed.animations,
     });
-    const response = CheckoutConfigResponseSchema.parse({
+    const response = {
       merchantId: saved.merchantId,
       logoUrl: saved.logoUrl ?? null,
       themeTokens: saved.themeTokens ?? null,
       animations: saved.animations,
       updatedAt: saved.updatedAt.toISOString(),
-    });
+    };
     res.status(200).json(response);
   } catch (err) {
     if (err instanceof ZodError) {

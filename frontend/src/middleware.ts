@@ -92,7 +92,8 @@ export function middleware(request: NextRequest) {
 
   // Headers de segurança
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
+  const isCheckoutFrame = pathname.startsWith("/checkout") || pathname.startsWith("/preview/checkout");
+  response.headers.set("X-Frame-Options", isCheckoutFrame ? "SAMEORIGIN" : "DENY");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
@@ -102,6 +103,8 @@ export function middleware(request: NextRequest) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
+      // Permitir que páginas de checkout sejam embutidas pelo mesmo domínio
+      "frame-ancestors 'self'",
       // Scripts: apenas fontes conhecidas necessárias
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
       // Estilos: permitir CSS de fonts.googleapis.com quando usado

@@ -1,0 +1,100 @@
+---
+alwaysApply: true
+---
+# Must consult existing memory
+
+## MUST DO WITH EACH REQUEST
+- First action for each chat request should be to read @self.mdc and @project.mdc
+- Last action for each chat should be to update @self.mdc, @project.mdc, @apis.mdc or @database-schema.mdc if needed.
+
+## Objective
+Ensure Cursor avoids repeating known mistakes by persistently logging corrections and learning. All requests must reference stored knowledge in:
+- `.cursor/rules/self.mdc` — for known mistakes and their fixes
+- `.cursor/rules/project.mdc` — for user preferences and custom rules
+- `.cursor/rules/database-schema.mdc` — for Supabase database schema and functions
+- `.cursor/rules/apis.mdc`: API endpoint documentation
+
+---
+
+## Rule: Learn from Mistakes
+
+### On Every Mistake or deprecated warning:
+1. **Detect** incorrect or suboptimal outputs.
+2. **Correct** the mistake.
+3. **Save** both mistake and correction in @self.mdc using the format:
+
+   ```markdown
+   ### Mistake: [Short Description]
+   **Wrong**:
+   ```
+   [Insert incorrect code or logic]
+   ```
+
+   **Correct**:
+   ```
+   [Insert corrected code or logic]
+   ```
+   ```
+
+---
+
+## Rule: Respect and Reference Project Preferences
+### On Every Request:
+1. **Read** @project.mdc for:
+   - User's preferred tools, stack, coding style, formatting, naming, etc.
+   - Preferences like TypeScript over JS, Yarn over npm, etc.
+2. **Apply** these preferences without exception.
+3. **Save** any new user preferences in @project.mdc.
+
+---
+
+## Rule: Consult and Maintain Database Schema
+### On Every Request Involving Database Interaction:
+1. **Read** `@backend/database-schema.mdc` to understand:
+   - Current database tables, columns, types, and relationships.
+   - Constraints, indexes, and RLS policies if documented.
+2. **Apply** this schema knowledge when generating SQL queries, database migrations, or backend code interacting with the database.
+3. **Update** `@backend/database-schema.mdc` if database schema modifications are made during the development process, ensuring it reflects the latest state (reinforces existing update rule).
+
+---
+
+## Rule: Consult and Maintain API Documentation
+### On Every Request Involving API Interaction or Definition:
+1. **Read** `@apis.mdc` to understand:
+   - Existing API endpoints, their purpose, request/response formats, and authentication requirements.
+2. **Apply** this knowledge when generating code that consumes or defines APIs.
+3. **Update** `@apis.mdc` if API endpoints are created, modified, or deleted during the development process, ensuring it reflects the latest state. Document the endpoint path, HTTP method, purpose, expected request body/params, and response structure.
+
+---
+
+## Rule: Prevent Repetition
+### On Every Request:
+- Always **read @self.mdc** before applying logic.
+- If a related mistake is found:
+  - **Use** the corrected approach instead.
+  - **Log** that a prior fix was applied (optional debug).
+
+---
+
+## Rule: Keep Memory Clean and Updated
+
+- If a better fix is found for an existing issue:
+  - **Update** that section in @self.mdc.
+- Structure the memory files with clear `###` headers.
+- Group by topic if needed.
+- MUST DO: Only keep general information in memory, do be specific to the file or request.
+- MUST DO: Information saved in memory should be useful and reusable.
+
+---
+
+## Storage Paths
+- `.cursor/rules/self.mdc`: Persistent log of mistakes and their fixes
+- `.cursor/rules/project.mdc`: User preferences and custom rules
+- `.cursor/rules/database-schema.mdc`: Supabase database schema and functions
+- `.cursor/rules/apis.mdc`: API endpoint documentation
+
+---
+
+## Enforcement
+- Failing to read or update memory files after a mistake is a **critical error**.
+- All requests must use and comply with stored knowledge and preferences.

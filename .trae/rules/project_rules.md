@@ -84,6 +84,13 @@ Turbofy — Regras do Projeto e Guia de Engenharia
 - Rate limiting e proteção anti-fraude; validação forte de entradas.
 - Auditoria: trilhas de auditoria para ações críticas (criar/alterar cobranças, repasses, chaves Pix).
 - Backups e plano de recuperação; retenção conforme exigência legal.
+ 
+ **Credenciais de Provedores (Gateway)**
+ 
+ - `client_id`/`client_secret` de provedores externos (ex.: BSPAY, Transfeera) são SEGREDOS DA PLATAFORMA Turbofy.
+ - Nunca expor, serializar ou trafegar esses segredos para o frontend; uso exclusivo no backend.
+ - Padrão: credenciais globais por ambiente (dev/staging/prod) gerenciadas via Secrets/IaC. Se houver exceções por merchant, armazenar cifrado e acesso restrito a `owner`.
+ - Criptografia em repouso: usar `TURBOFY_CREDENTIALS_ENC_KEY` para cifrar segredos no banco quando necessário.
 
 **IaC com SST**
 

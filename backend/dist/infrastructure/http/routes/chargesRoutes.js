@@ -9,6 +9,7 @@ const PaymentProviderFactory_1 = require("../../adapters/payment/PaymentProvider
 const InMemoryMessagingAdapter_1 = require("../../adapters/messaging/InMemoryMessagingAdapter");
 const CreateCharge_1 = require("../../../application/useCases/CreateCharge");
 const logger_1 = require("../../logger");
+const PrismaPaymentInteractionRepository_1 = require("../../database/repositories/PrismaPaymentInteractionRepository");
 exports.chargesRouter = (0, express_1.Router)();
 // Middleware de idempotência
 exports.chargesRouter.use((req, res, next) => {
@@ -25,12 +26,14 @@ exports.chargesRouter.post("/", async (req, res) => {
         const chargeRepository = new PrismaChargeRepository_1.PrismaChargeRepository();
         const paymentProvider = PaymentProviderFactory_1.PaymentProviderFactory.create();
         const messaging = new InMemoryMessagingAdapter_1.InMemoryMessagingAdapter();
-        const useCase = new CreateCharge_1.CreateCharge(chargeRepository, paymentProvider, messaging);
+        const paymentInteractionRepository = new PrismaPaymentInteractionRepository_1.PrismaPaymentInteractionRepository();
+        const useCase = new CreateCharge_1.CreateCharge(chargeRepository, paymentProvider, messaging, paymentInteractionRepository);
         // With nativeEnum, parsed.method is already a ChargeMethod
         const methodEnum = parsed.method;
         const result = await useCase.execute({
             idempotencyKey: req.header("X-Idempotency-Key"),
             merchantId: parsed.merchantId,
+            initiatorUserId: req.user?.id,
             amountCents: parsed.amountCents,
             currency: parsed.currency,
             description: parsed.description,

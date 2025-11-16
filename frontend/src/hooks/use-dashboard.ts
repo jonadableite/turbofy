@@ -34,11 +34,28 @@ interface TopProduct {
   revenue: number;
 }
 
+export interface PaymentInteractionEntry {
+  id: string;
+  chargeId?: string | null;
+  sessionId?: string | null;
+  type: string;
+  method?: string | null;
+  provider?: string | null;
+  amountCents?: number | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+  user?: {
+    id: string;
+    email: string;
+  } | null;
+}
+
 export const useDashboard = (merchantId: string) => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [healthMetrics, setHealthMetrics] = useState<HealthMetrics | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [interactions, setInteractions] = useState<PaymentInteractionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,42 +90,52 @@ export const useDashboard = (merchantId: string) => {
     const revenueKey = `dashboard:revenue:${merchantId}`;
     const healthKey = `dashboard:health:${merchantId}`;
     const productsKey = `dashboard:products:${merchantId}`;
+    const interactionsKey = `dashboard:interactions:${merchantId}`;
 
     const cachedMetrics = readCache<DashboardMetrics>(metricsKey);
     const cachedRevenue = readCache<RevenueData[]>(revenueKey);
     const cachedHealth = readCache<HealthMetrics>(healthKey);
     const cachedProducts = readCache<TopProduct[]>(productsKey);
+    const cachedInteractions = readCache<PaymentInteractionEntry[]>(interactionsKey);
 
     const hasCached = Boolean(
-      cachedMetrics || (cachedRevenue && cachedRevenue.length) || cachedHealth || (cachedProducts && cachedProducts.length)
+      cachedMetrics ||
+      (cachedRevenue && cachedRevenue.length) ||
+      cachedHealth ||
+      (cachedProducts && cachedProducts.length) ||
+      (cachedInteractions && cachedInteractions.length)
     );
 
     if (cachedMetrics) setMetrics(cachedMetrics);
     if (cachedRevenue) setRevenueData(cachedRevenue);
     if (cachedHealth) setHealthMetrics(cachedHealth);
     if (cachedProducts) setTopProducts(cachedProducts || []);
+    if (cachedInteractions) setInteractions(cachedInteractions);
 
     setLoading(!hasCached);
     setError(null);
 
     const fetchDashboardData = async () => {
       try {
-        const [metricsRes, revenueRes, healthRes, productsRes] = await Promise.all([
+        const [metricsRes, revenueRes, healthRes, productsRes, interactionsRes] = await Promise.all([
           api.get(`/dashboard/metrics?merchantId=${merchantId}`),
           api.get(`/dashboard/revenue-history?merchantId=${merchantId}`),
           api.get(`/dashboard/health?merchantId=${merchantId}`),
           api.get(`/dashboard/top-products?merchantId=${merchantId}&limit=3`),
+          api.get(`/dashboard/interactions?merchantId=${merchantId}&limit=25`),
         ]);
 
         setMetrics(metricsRes.data);
         setRevenueData(revenueRes.data);
         setHealthMetrics(healthRes.data);
         setTopProducts(productsRes.data);
+        setInteractions(interactionsRes.data);
 
         writeCache(metricsKey, metricsRes.data);
         writeCache(revenueKey, revenueRes.data);
         writeCache(healthKey, healthRes.data);
         writeCache(productsKey, productsRes.data);
+        writeCache(interactionsKey, interactionsRes.data);
         setError(null);
       } catch (err: unknown) {
         const message = typeof err === "object" && err && (err as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message;
@@ -128,6 +155,7 @@ export const useDashboard = (merchantId: string) => {
     revenueData,
     healthMetrics,
     topProducts,
+    interactions,
     loading,
     error,
   };

@@ -11,11 +11,13 @@ const ChargeSplit_1 = require("../../domain/entities/ChargeSplit");
 const Fee_1 = require("../../domain/entities/Fee");
 const crypto_1 = require("crypto");
 const logger_1 = require("../../infrastructure/logger");
+const PaymentInteraction_1 = require("../../domain/entities/PaymentInteraction");
 class CreateCharge {
-    constructor(chargeRepository, paymentProvider, messaging) {
+    constructor(chargeRepository, paymentProvider, messaging, paymentInteractionRepository) {
         this.chargeRepository = chargeRepository;
         this.paymentProvider = paymentProvider;
         this.messaging = messaging;
+        this.paymentInteractionRepository = paymentInteractionRepository;
     }
     async execute(input) {
         // 1. Idempotency check
@@ -93,6 +95,19 @@ class CreateCharge {
             const persistedFee = await this.chargeRepository.addFee(charge.id, fee);
             persistedFees.push(persistedFee);
         }
+        await this.paymentInteractionRepository.create(PaymentInteraction_1.PaymentInteraction.create({
+            merchantId: persisted.merchantId,
+            userId: input.initiatorUserId,
+            chargeId: persisted.id,
+            type: PaymentInteraction_1.PaymentInteractionType.CHARGE_CREATED,
+            method: persisted.method,
+            amountCents: persisted.amountCents,
+            metadata: {
+                idempotencyKey: input.idempotencyKey,
+                splits: persistedSplits.length,
+                fees: persistedFees.length,
+            },
+        }));
         // 8. Emit payment via provider depending on method
         if (persisted.method === Charge_1.ChargeMethod.PIX) {
             const pixData = await this.paymentProvider.issuePixCharge({
@@ -102,6 +117,17 @@ class CreateCharge {
                 expiresAt: persisted.expiresAt ?? undefined,
             });
             persisted = persisted.withPixData(pixData.qrCode, pixData.copyPaste);
+            await this.paymentInteractionRepository.create(PaymentInteraction_1.PaymentInteraction.create({
+                merchantId: persisted.merchantId,
+                userId: input.initiatorUserId,
+                chargeId: persisted.id,
+                type: PaymentInteraction_1.PaymentInteractionType.PIX_ISSUED,
+                method: Charge_1.ChargeMethod.PIX,
+                amountCents: persisted.amountCents,
+                metadata: {
+                    expiresAt: (persisted.expiresAt ?? new Date()).toISOString(),
+                },
+            }));
         }
         else if (persisted.method === Charge_1.ChargeMethod.BOLETO) {
             const boletoData = await this.paymentProvider.issueBoletoCharge({
@@ -111,6 +137,17 @@ class CreateCharge {
                 expiresAt: persisted.expiresAt ?? undefined,
             });
             persisted = persisted.withBoletoData(boletoData.boletoUrl);
+            await this.paymentInteractionRepository.create(PaymentInteraction_1.PaymentInteraction.create({
+                merchantId: persisted.merchantId,
+                userId: input.initiatorUserId,
+                chargeId: persisted.id,
+                type: PaymentInteraction_1.PaymentInteractionType.BOLETO_ISSUED,
+                method: Charge_1.ChargeMethod.BOLETO,
+                amountCents: persisted.amountCents,
+                metadata: {
+                    expiresAt: (persisted.expiresAt ?? new Date()).toISOString(),
+                },
+            }));
         }
         // 9. Update persisted charge with payment data (if any)
         if (persisted.pixQrCode || persisted.boletoUrl) {
